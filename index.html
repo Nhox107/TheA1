@@ -1,0 +1,2105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bảo tàng của A1-THPT Tân Lược (23-26)</title>
+
+  <!-- ─── CDN Dependencies ─────────────────────────────────────────────── -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <!-- ─── Tailwind Config ───────────────────────────────────────────────── -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            navy:     { DEFAULT: '#0D1B2A', light: '#1A2E44', lighter: '#243C55' },
+            cream:    { DEFAULT: '#F5EDD6', light: '#FAF5EA', dark: '#E8D9B8' },
+            gold:     { DEFAULT: '#C9A84C', light: '#D9BC72', dark: '#A8883A', pale: '#F0E4B8' },
+            brass:    { DEFAULT: '#8B7355', light: '#A08860' },
+          },
+          fontFamily: {
+            serif:  ['Playfair Display', 'Georgia', 'serif'],
+            sans:   ['Inter', 'system-ui', 'sans-serif'],
+          },
+          animation: {
+            'fade-in':      'fadeIn 0.6s ease forwards',
+            'slide-up':     'slideUp 0.5s ease forwards',
+            'modal-in':     'modalIn 0.4s cubic-bezier(0.16,1,0.3,1) forwards',
+            'shimmer':      'shimmer 2s infinite',
+          },
+          keyframes: {
+            fadeIn:   { from: { opacity: 0 }, to: { opacity: 1 } },
+            slideUp:  { from: { opacity: 0, transform: 'translateY(24px)' }, to: { opacity: 1, transform: 'translateY(0)' } },
+            modalIn:  { from: { opacity: 0, transform: 'scale(0.92) translateY(16px)' }, to: { opacity: 1, transform: 'scale(1) translateY(0)' } },
+            shimmer:  { '0%,100%': { opacity: 0.7 }, '50%': { opacity: 1 } },
+          },
+        }
+      }
+    }
+  </script>
+
+  <!-- ─── Custom CSS ────────────────────────────────────────────────────── -->
+  <style>
+    /* ── Base ── */
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #0D1B2A;
+      font-family: 'Inter', system-ui, sans-serif;
+      color: #F5EDD6;
+      overflow-x: hidden;
+      min-height: 100dvh;
+    }
+    ::selection { background: #C9A84C44; color: #F5EDD6; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #0D1B2A; }
+    ::-webkit-scrollbar-thumb { background: #C9A84C55; border-radius: 3px; }
+
+    /* ── Room Transitions ── */
+    .room-enter-active { animation: fadeIn 0.55s ease; }
+    .room-leave-active { animation: fadeIn 0.3s ease reverse; }
+
+    /* ── 2.5D Corridor ── */
+    .corridor-scene {
+      perspective: 900px;
+      perspective-origin: 50% 45%;
+    }
+    .corridor-floor {
+      background: linear-gradient(to bottom,
+        #0D1B2A 0%,
+        #131F2F 20%,
+        #1A2E44 60%,
+        #243C55 100%);
+      position: relative;
+      overflow: hidden;
+    }
+    /* Tiled floor grid illusion */
+    .corridor-floor::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(201,168,76,0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(201,168,76,0.06) 1px, transparent 1px);
+      background-size: 60px 60px;
+      transform: perspective(500px) rotateX(55deg) scaleX(1.4);
+      transform-origin: 50% 100%;
+      pointer-events: none;
+    }
+    /* Ceiling vanishing lines */
+    .corridor-floor::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 45%;
+      background:
+        radial-gradient(ellipse 60% 80% at 50% 0%, rgba(201,168,76,0.07) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    /* Vanishing point glow at end of corridor */
+    .vp-glow {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 340px; height: 340px;
+      background: radial-gradient(circle, rgba(201,168,76,0.18) 0%, rgba(201,168,76,0.06) 40%, transparent 70%);
+      pointer-events: none;
+      border-radius: 50%;
+      animation: shimmer 3s ease-in-out infinite;
+    }
+
+    /* ── Member Carousel Controls ── */
+    .corridor-nav-btn {
+      width: 42px; height: 42px;
+      border-radius: 50%;
+      background: rgba(26,46,68,0.6);
+      border: 1px solid rgba(201,168,76,0.35);
+      display: flex; align-items: center; justify-content: center;
+      color: #C9A84C;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background 0.25s, border-color 0.25s, transform 0.25s;
+    }
+    .corridor-nav-btn:hover {
+      background: rgba(201,168,76,0.16);
+      border-color: rgba(201,168,76,0.7);
+      transform: scale(1.08);
+    }
+    .corridor-nav-btn:active { transform: scale(0.96); }
+    .corridor-page-dots {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      max-width: 220px;
+    }
+    .corridor-page-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: rgba(201,168,76,0.25);
+      border: none;
+      cursor: pointer;
+      padding: 0;
+      transition: background 0.25s, transform 0.25s;
+    }
+    .corridor-page-dot:hover { background: rgba(201,168,76,0.5); }
+    .corridor-page-dot.active {
+      background: #C9A84C;
+      transform: scale(1.35);
+    }
+
+    /* Wall picture frame */
+    .wall-frame {
+      cursor: pointer;
+      position: relative;
+      transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1), filter 0.35s ease;
+      filter: drop-shadow(0 8px 24px rgba(0,0,0,0.55));
+    }
+    .wall-frame:hover {
+      transform: scale(1.07) translateY(-4px);
+      filter: drop-shadow(0 14px 36px rgba(201,168,76,0.35));
+      z-index: 10;
+    }
+    .wall-frame:hover .frame-glow { opacity: 1; }
+    .frame-glow {
+      position: absolute;
+      inset: -6px;
+      border-radius: 4px;
+      background: linear-gradient(135deg, rgba(201,168,76,0.3), transparent 60%);
+      opacity: 0;
+      transition: opacity 0.35s ease;
+      pointer-events: none;
+    }
+
+    /* Frame outer border — ornate */
+    .frame-border {
+      padding: 6px;
+      background: linear-gradient(135deg, #C9A84C, #8B7355 40%, #C9A84C 70%, #D9BC72);
+      border-radius: 3px;
+      box-shadow:
+        inset 0 0 0 1px rgba(255,255,255,0.12),
+        0 2px 8px rgba(0,0,0,0.6);
+    }
+    .frame-inner {
+      padding: 4px;
+      background: #0D1B2A;
+      border-radius: 2px;
+    }
+    .frame-photo {
+      width: 100%;
+      aspect-ratio: 3/4;
+      object-fit: cover;
+      display: block;
+      border-radius: 1px;
+      background: linear-gradient(135deg, #1A2E44, #243C55);
+    }
+
+    /* Avatar placeholder when no image */
+    .avatar-placeholder {
+      width: 100%;
+      aspect-ratio: 3/4;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(160deg, #1A2E44 0%, #243C55 100%);
+      border-radius: 1px;
+      gap: 8px;
+      font-family: 'Playfair Display', serif;
+      color: #C9A84C88;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+    }
+    .avatar-placeholder svg { opacity: 0.45; }
+
+    /* Nameplate below frame */
+    .nameplate {
+      background: linear-gradient(90deg, #1A2E44, #243C55, #1A2E44);
+      border: 1px solid #C9A84C44;
+      border-top: none;
+      text-align: center;
+      padding: 5px 8px 6px;
+      border-radius: 0 0 3px 3px;
+    }
+
+    /* Corridor walls — left & right panels */
+    .wall-left, .wall-right {
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+      align-items: center;
+    }
+    .wall-left { padding-right: 12px; }
+    .wall-right { padding-left: 12px; }
+
+    /* Left wall frames recede into depth */
+    .wall-left .wall-frame:nth-child(1) { transform: perspective(600px) rotateY(12deg) translateZ(0) scale(1); }
+    .wall-left .wall-frame:nth-child(2) { transform: perspective(600px) rotateY(14deg) translateZ(-40px) scale(0.9); }
+    .wall-left .wall-frame:nth-child(3) { transform: perspective(600px) rotateY(16deg) translateZ(-80px) scale(0.82); }
+    .wall-left .wall-frame:nth-child(1):hover { transform: perspective(600px) rotateY(12deg) translateZ(20px) scale(1.07); }
+    .wall-left .wall-frame:nth-child(2):hover { transform: perspective(600px) rotateY(14deg) translateZ(-20px) scale(0.97); }
+    .wall-left .wall-frame:nth-child(3):hover { transform: perspective(600px) rotateY(16deg) translateZ(-60px) scale(0.89); }
+
+    /* Right wall frames recede into depth */
+    .wall-right .wall-frame:nth-child(1) { transform: perspective(600px) rotateY(-12deg) translateZ(0) scale(1); }
+    .wall-right .wall-frame:nth-child(2) { transform: perspective(600px) rotateY(-14deg) translateZ(-40px) scale(0.9); }
+    .wall-right .wall-frame:nth-child(3) { transform: perspective(600px) rotateY(-16deg) translateZ(-80px) scale(0.82); }
+    .wall-right .wall-frame:nth-child(1):hover { transform: perspective(600px) rotateY(-12deg) translateZ(20px) scale(1.07); }
+    .wall-right .wall-frame:nth-child(2):hover { transform: perspective(600px) rotateY(-14deg) translateZ(-20px) scale(0.97); }
+    .wall-right .wall-frame:nth-child(3):hover { transform: perspective(600px) rotateY(-16deg) translateZ(-60px) scale(0.89); }
+
+    /* Additional frames row 2 */
+    .row-2 .wall-left .wall-frame:nth-child(1) { transform: perspective(600px) rotateY(12deg) translateZ(-30px) scale(0.92); }
+    .row-2 .wall-right .wall-frame:nth-child(1) { transform: perspective(600px) rotateY(-12deg) translateZ(-30px) scale(0.92); }
+
+    /* ── Class Emblem ── */
+    .class-emblem {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .emblem-ring {
+      width: 230px; height: 230px;
+      border-radius: 50%;
+      border: 2px solid #C9A84C55;
+      display: flex; align-items: center; justify-content: center;
+      position: relative;
+      box-shadow: 0 0 40px rgba(201,168,76,0.12), inset 0 0 30px rgba(0,0,0,0.3);
+    }
+    .emblem-ring::before {
+      content: '';
+      position: absolute;
+      inset: 6px;
+      border-radius: 50%;
+      border: 1px solid #C9A84C33;
+    }
+    .emblem-inner {
+      width: 180px; height: 180px;
+      border-radius: 50%;
+      background: linear-gradient(145deg, #1A2E44, #0D1B2A);
+      display: flex; align-items: center; justify-content: center;
+      border: 1px solid #C9A84C66;
+      font-family: 'Playfair Display', serif;
+      font-size: 48px;
+      color: #C9A84C;
+      text-shadow: 0 0 20px rgba(201,168,76,0.4);
+    }
+
+    /* ── Class Emblem Particle Heart (rotating point-cloud) ── */
+    .emblem-heart-wrap {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+    .emblem-heart-wrap canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* ── Modal ── */
+    .modal-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(6, 12, 20, 0.85);
+      backdrop-filter: blur(8px);
+      z-index: 100;
+      display: flex; align-items: center; justify-content: center;
+      padding: 16px;
+    }
+    .modal-card {
+      background: linear-gradient(160deg, #1A2E44 0%, #0D1B2A 100%);
+      border: 1px solid #C9A84C33;
+      border-radius: 12px;
+      max-width: 580px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow:
+        0 32px 80px rgba(0,0,0,0.7),
+        0 0 0 1px rgba(201,168,76,0.08),
+        inset 0 1px 0 rgba(255,255,255,0.06);
+      animation: modalIn 0.4s cubic-bezier(0.16,1,0.3,1) forwards;
+    }
+    .modal-header {
+      position: relative;
+      padding: 28px 28px 20px;
+      border-bottom: 1px solid rgba(201,168,76,0.15);
+    }
+    .modal-avatar {
+      width: 88px; height: 112px;
+      object-fit: cover;
+      border-radius: 4px;
+      border: 2px solid #C9A84C55;
+      background: linear-gradient(135deg, #1A2E44, #243C55);
+      flex-shrink: 0;
+    }
+    .modal-avatar-placeholder {
+      width: 88px; height: 112px;
+      background: linear-gradient(135deg, #1A2E44, #243C55);
+      border: 2px solid #C9A84C44;
+      border-radius: 4px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .modal-close {
+      position: absolute; top: 16px; right: 16px;
+      width: 32px; height: 32px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+      color: #F5EDD6aa;
+    }
+    .modal-close:hover { background: rgba(201,168,76,0.15); border-color: #C9A84C55; color: #C9A84C; }
+
+    .modal-section {
+      padding: 20px 28px;
+      border-bottom: 1px solid rgba(201,168,76,0.1);
+    }
+    .modal-section:last-child { border-bottom: none; }
+
+    .section-label {
+      font-family: 'Inter', sans-serif;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #C9A84C99;
+      margin-bottom: 10px;
+    }
+    .quote-block {
+      border-left: 2px solid #C9A84C55;
+      padding: 8px 16px;
+      font-family: 'Playfair Display', serif;
+      font-style: italic;
+      font-size: 15px;
+      color: #F5EDD6cc;
+      line-height: 1.7;
+    }
+
+    /* ── Navigation ── */
+    .nav-bar {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 50;
+      display: flex;
+      gap: 8px;
+      background: rgba(13, 27, 42, 0.82);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(201,168,76,0.22);
+      border-radius: 100px;
+      padding: 6px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(201,168,76,0.06);
+    }
+    .nav-btn {
+      display: flex; align-items: center; gap: 8px;
+      padding: 9px 18px;
+      border-radius: 100px;
+      font-family: 'Inter', sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      transition: background 0.25s, color 0.25s, box-shadow 0.25s;
+      color: #F5EDD6aa;
+      border: none;
+      background: transparent;
+    }
+    .nav-btn:hover { color: #F5EDD6; background: rgba(255,255,255,0.05); }
+    .nav-btn.active {
+      background: linear-gradient(135deg, #C9A84C, #A8883A);
+      color: #0D1B2A;
+      font-weight: 600;
+      box-shadow: 0 4px 16px rgba(201,168,76,0.35);
+    }
+
+    /* ── Header ── */
+    .museum-header {
+      padding: 20px 32px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .header-logo {
+      font-family: 'Playfair Display', serif;
+      font-size: 13px;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: #C9A84C88;
+    }
+
+    /* ── History Room ── */
+    .history-card {
+      background: linear-gradient(160deg, rgba(26,46,68,0.8), rgba(13,27,42,0.9));
+      border: 1px solid rgba(201,168,76,0.18);
+      border-radius: 10px;
+      padding: 28px;
+      backdrop-filter: blur(4px);
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+    .history-card:hover {
+      border-color: rgba(201,168,76,0.35);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    }
+    .stat-number {
+      font-family: 'Playfair Display', serif;
+      font-size: 48px;
+      font-weight: 700;
+      color: #C9A84C;
+      line-height: 1;
+    }
+    .timeline-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: #C9A84C;
+      flex-shrink: 0;
+      box-shadow: 0 0 8px rgba(201,168,76,0.5);
+    }
+    .timeline-line {
+      width: 1px;
+      background: linear-gradient(to bottom, #C9A84C55, transparent);
+      margin: 4px auto;
+      flex-grow: 1;
+      min-height: 28px;
+    }
+
+    /* ── Teacher Room ── */
+    .teacher-portrait {
+      position: relative;
+      transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1);
+      cursor: pointer;
+    }
+    .teacher-portrait:hover { transform: translateY(-8px); }
+    .teacher-portrait:hover .teacher-frame-glow { opacity: 1; }
+    .teacher-frame-glow {
+      position: absolute;
+      inset: -8px;
+      border-radius: 8px;
+      background: radial-gradient(ellipse at center, rgba(201,168,76,0.2) 0%, transparent 70%);
+      opacity: 0;
+      transition: opacity 0.4s ease;
+      pointer-events: none;
+    }
+    .teacher-card-frame {
+      padding: 8px;
+      background: linear-gradient(145deg, #C9A84C, #8B7355 50%, #D9BC72);
+      border-radius: 6px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.15);
+    }
+    .teacher-card-inner {
+      background: #0D1B2A;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    /* ── Divider ── */
+    .gold-divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, #C9A84C55, #C9A84C, #C9A84C55, transparent);
+      margin: 0 auto;
+    }
+
+    /* ── Room titles ── */
+    .room-title {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(26px, 5vw, 40px);
+      font-weight: 600;
+      color: #F5EDD6;
+      text-align: center;
+      line-height: 1.2;
+    }
+    .room-subtitle {
+      font-size: 12px;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: #C9A84C88;
+      text-align: center;
+    }
+
+    /* ── Scrollbar for modal ── */
+    .modal-card::-webkit-scrollbar { width: 4px; }
+    .modal-card::-webkit-scrollbar-thumb { background: #C9A84C44; border-radius: 2px; }
+
+    /* ── Badge / tag ── */
+    .role-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(201,168,76,0.12);
+      border: 1px solid rgba(201,168,76,0.3);
+      border-radius: 100px;
+      padding: 3px 10px;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #C9A84C;
+    }
+
+    /* ── Personal Room ── */
+    .personal-card {
+      background: linear-gradient(160deg, rgba(26,46,68,0.8), rgba(13,27,42,0.9));
+      border: 1px solid rgba(201,168,76,0.18);
+      border-radius: 10px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1), border-color 0.3s, box-shadow 0.3s;
+    }
+    .personal-card:hover {
+      transform: translateY(-6px);
+      border-color: rgba(201,168,76,0.4);
+      box-shadow: 0 14px 36px rgba(0,0,0,0.4);
+    }
+    .personal-card-photo-wrap {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 4/3;
+      background: linear-gradient(160deg, #1A2E44, #243C55);
+      overflow: hidden;
+    }
+    .personal-card-photo {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform 0.5s ease;
+    }
+    .personal-card:hover .personal-card-photo { transform: scale(1.05); }
+    .personal-card-placeholder {
+      width: 100%; height: 100%;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 8px;
+      color: #C9A84C66;
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      font-family: 'Playfair Display', serif;
+    }
+    .personal-card-date {
+      position: absolute; top: 10px; right: 10px;
+      background: rgba(13,27,42,0.78);
+      border: 1px solid rgba(201,168,76,0.3);
+      border-radius: 100px;
+      padding: 3px 12px;
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      color: #C9A84C;
+      backdrop-filter: blur(4px);
+    }
+    .personal-card-body { padding: 18px 20px 22px; }
+    .personal-card-body h3 {
+      font-family: 'Playfair Display', serif;
+      font-size: 16px;
+      font-weight: 600;
+      color: #F5EDD6;
+      margin: 0 0 8px;
+    }
+    .personal-card-body p {
+      font-size: 12px;
+      color: #F5EDD677;
+      line-height: 1.65;
+      margin: 0;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .personal-card-tags {
+      display: flex; flex-wrap: wrap; gap: 6px;
+      margin-top: 10px;
+    }
+    .personal-card-tag {
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      color: #C9A84C99;
+      background: rgba(201,168,76,0.08);
+      border: 1px solid rgba(201,168,76,0.2);
+      border-radius: 100px;
+      padding: 2px 9px;
+    }
+    /* Entry modal photo */
+    .entry-modal-photo {
+      width: 100%;
+      max-height: 360px;
+      object-fit: cover;
+      display: block;
+      border-radius: 8px;
+      border: 1px solid rgba(201,168,76,0.2);
+    }
+
+    /* ── Mobile adjustments ── */
+    @media (max-width: 640px) {
+      .wall-left .wall-frame:nth-child(n) { transform: none !important; }
+      .wall-right .wall-frame:nth-child(n) { transform: none !important; }
+      .wall-frame:hover { transform: scale(1.04) translateY(-3px) !important; }
+      .nav-btn span.label { display: none; }
+      .nav-btn { padding: 9px 12px; }
+      .emblem-ring { width: 150px; height: 150px; }
+      .emblem-inner { width: 116px; height: 116px; }
+      .class-emblem { min-width: 150px !important; }
+    }
+
+    /* ── Fade utility ── */
+    [v-cloak] { display: none; }
+  </style>
+</head>
+
+<body>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<!--  Vue App Root                                                         -->
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<div id="app" v-cloak>
+
+  <!-- ── Museum Header ──────────────────────────────────────────── -->
+  <header class="museum-header">
+    <span class="header-logo">✦ Bảo Tàng Kỷ Niệm 12A1 (THPT Tân Lược)</span>
+    <span style="font-family:'Playfair Display',serif;font-size:12px;color:#C9A84C55;letter-spacing:0.1em;">
+      {{ classData.year }}
+    </span>
+  </header>
+
+  <!-- ── Room Container ─────────────────────────────────────────── -->
+  <main style="min-height:100vh;padding-bottom:90px;">
+    <transition name="room" mode="out-in">
+
+      <!-- ══════════════════════════════════════════════════════ -->
+      <!--  ROOM 1 — THE CLASSROOM (Main Hall)                   -->
+      <!-- ══════════════════════════════════════════════════════ -->
+      <section v-if="currentRoom === 'hall'" key="hall">
+
+        <!-- Room title -->
+        <div class="pt-8 pb-6 text-center animate-fade-in">
+          <p class="room-subtitle mb-2">Phòng Trưng Bày Chính</p>
+          <!-- <h1 class="room-title">{{ classData.name }}</h1> -->
+          <h1 class="room-title">SERENDIPITY</h1>
+          <div class="gold-divider w-24 mt-4 mx-auto"></div>
+        </div>
+
+        <!-- 2.5D Corridor Scene -->
+        <div class="corridor-scene px-4 md:px-8" style="max-width:1100px;margin:0 auto;">
+          <div class="corridor-floor rounded-2xl overflow-hidden"
+               style="min-height:580px;padding:40px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px;position:relative;">
+
+            <!-- Vanishing-point glow -->
+            <div class="vp-glow"></div>
+
+            <!-- ── Left Wall ── -->
+            <div class="wall-left flex-1" style="max-width:180px;align-self:stretch;display:flex;flex-direction:column;justify-content:center;gap:28px;">
+              <div
+                v-for="(member, i) in leftWallMembers"
+                :key="'L'+member.id"
+                class="wall-frame animate-fade-in"
+                @click="openModal(member)"
+                :title="member.name"
+              >
+                <div class="frame-glow"></div>
+                <div class="frame-border">
+                  <div class="frame-inner">
+                    <img v-if="member.photo" :src="member.photo" :alt="member.name" class="frame-photo" />
+                    <div v-else class="avatar-placeholder">
+                      <!-- Inline SVG person icon -->
+                      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#C9A84C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+                <div class="nameplate">
+                  <p style="font-family:'Playfair Display',serif;font-size:10px;color:#F5EDD6cc;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ member.name }}</p>
+                  <p style="font-size:9px;color:#C9A84C88;margin-top:1px;">{{ member.role }}</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- ── Centre — Class Emblem ── -->
+            <div class="class-emblem flex-shrink-0" style="min-width:230px;">
+              <div class="emblem-ring">
+                <div class="emblem-inner">
+                  <div class="emblem-heart-wrap">
+                    <canvas id="emblemHeartCvs"></canvas>
+                  </div>
+                </div>
+              </div>
+              <div class="mt-4 text-center">
+                <p style="font-family:'Playfair Display',serif;font-size:15px;font-weight:600;color:#C9A84C;letter-spacing:0.05em;">{{ classData.name }}</p>
+                <p style="font-size:10px;color:#F5EDD688;letter-spacing:0.15em;margin-top:3px;">{{ classData.motto }}</p>
+              </div>
+              <!-- Decorative stars -->
+              <div style="display:flex;gap:6px;margin-top:10px;opacity:0.5;">
+                <span v-for="n in 5" :key="n" style="color:#C9A84C;font-size:10px;">✦</span>
+              </div>
+            </div>
+
+            <!-- ── Right Wall ── -->
+            <div class="wall-right flex-1" style="max-width:180px;align-self:stretch;display:flex;flex-direction:column;justify-content:center;gap:28px;">
+              <div
+                v-for="(member, i) in rightWallMembers"
+                :key="'R'+member.id"
+                class="wall-frame animate-fade-in"
+                @click="openModal(member)"
+                :title="member.name"
+              >
+                <div class="frame-glow"></div>
+                <div class="frame-border">
+                  <div class="frame-inner">
+                    <img v-if="member.photo" :src="member.photo" :alt="member.name" class="frame-photo" />
+                    <div v-else class="avatar-placeholder">
+                      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#C9A84C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+                <div class="nameplate">
+                  <p style="font-family:'Playfair Display',serif;font-size:10px;color:#F5EDD6cc;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ member.name }}</p>
+                  <p style="font-size:9px;color:#C9A84C88;margin-top:1px;">{{ member.role }}</p>
+                </div>
+              </div>
+            </div>
+
+          </div><!-- /corridor-floor -->
+        </div><!-- /corridor-scene -->
+
+        <!-- Carousel navigation: cycle through all members 6 at a time -->
+        <div style="display:flex;align-items:center;justify-content:center;gap:18px;margin-top:32px;">
+          <button class="corridor-nav-btn" @click="prevMemberPage" aria-label="Thành viên trước">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="15 18 9 12 15 6"/>
+            </svg>
+          </button>
+          <div class="corridor-page-dots">
+            <button
+              v-for="p in totalMemberPages"
+              :key="p"
+              class="corridor-page-dot"
+              :class="{ active: memberPage === p - 1 }"
+              @click="memberPage = p - 1"
+              :aria-label="'Trang ' + p"
+            ></button>
+          </div>
+          <button class="corridor-nav-btn" @click="nextMemberPage" aria-label="Thành viên tiếp theo">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="9 18 15 12 9 6"/>
+            </svg>
+          </button>
+        </div>
+        <p style="text-align:center;font-size:10px;color:#C9A84C66;letter-spacing:0.25em;text-transform:uppercase;margin-top:12px;">
+          Thành Viên {{ memberPage * 6 + 1 }}–{{ Math.min((memberPage + 1) * 6, students.length) }} / {{ students.length }}
+        </p>
+
+      </section><!-- /hall -->
+
+
+      <!-- ══════════════════════════════════════════════════════ -->
+      <!--  ROOM 2 — TEACHERS' GALLERY                           -->
+      <!-- ══════════════════════════════════════════════════════ -->
+      <section v-else-if="currentRoom === 'teachers'" key="teachers" style="padding:32px 20px 0;max-width:900px;margin:0 auto;">
+
+        <div class="text-center mb-10 animate-fade-in">
+          <p class="room-subtitle mb-2">Phòng Vinh Danh</p>
+          <h1 class="room-title">Thầy Cô Kính Yêu</h1>
+          <div class="gold-divider w-24 mt-4 mx-auto"></div>
+          <p style="font-size:13px;color:#F5EDD677;margin-top:16px;font-style:italic;font-family:'Playfair Display',serif;">"Người trồng cây, người gieo hạt — công ơn bất diệt."</p>
+        </div>
+
+        <!-- Teacher portraits -->
+        <div style="display:flex;flex-wrap:wrap;gap:40px;justify-content:center;">
+          <div
+            v-for="teacher in teachers"
+            :key="teacher.id"
+            class="teacher-portrait"
+            @click="openModal(teacher)"
+            style="width:220px;"
+          >
+            <div class="teacher-frame-glow"></div>
+            <div class="teacher-card-frame">
+              <div class="teacher-card-inner">
+                <img v-if="teacher.photo" :src="teacher.photo" :alt="teacher.name"
+                     style="width:100%;height:280px;object-fit:cover;display:block;" />
+                <div v-else style="width:100%;height:280px;background:linear-gradient(160deg,#1A2E44,#243C55);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;">
+                  <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#C9A84C" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5">
+                    <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+                  </svg>
+                  <span style="font-family:'Playfair Display',serif;font-size:11px;color:#C9A84C55;letter-spacing:0.1em;">Ảnh Chân Dung</span>
+                </div>
+              </div>
+            </div>
+            <!-- Name card below portrait -->
+            <div style="background:linear-gradient(160deg,#1A2E44,#0D1B2A);border:1px solid rgba(201,168,76,0.2);border-top:none;border-radius:0 0 6px 6px;padding:14px;text-align:center;">
+              <p style="font-family:'Playfair Display',serif;font-size:15px;font-weight:600;color:#F5EDD6;">{{ teacher.name }}</p>
+              <p style="font-size:10px;color:#C9A84C;letter-spacing:0.12em;text-transform:uppercase;margin-top:4px;">{{ teacher.role }}</p>
+              <p style="font-size:11px;color:#F5EDD655;margin-top:6px;font-style:italic;">{{ teacher.subject }}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dedication banner -->
+        <div style="margin-top:56px;text-align:center;padding:32px;border:1px solid rgba(201,168,76,0.15);border-radius:10px;background:linear-gradient(160deg,rgba(26,46,68,0.5),rgba(13,27,42,0.5));">
+          <p style="font-family:'Playfair Display',serif;font-size:18px;font-style:italic;color:#F5EDD6cc;line-height:1.8;">
+            "Dù bước chân đến phương trời nào,<br/>chúng em vẫn nhớ mãi những tháng ngày đứng lớp của thầy cô."
+          </p>
+          <div class="gold-divider w-32 mt-6 mx-auto"></div>
+          <p style="font-size:10px;color:#C9A84C66;letter-spacing:0.2em;text-transform:uppercase;margin-top:12px;">Lớp {{ classData.name }} · {{ classData.year }}</p>
+        </div>
+
+      </section><!-- /teachers -->
+
+
+      <!-- ══════════════════════════════════════════════════════ -->
+      <!--  ROOM 3 — CLASS HISTORY                               -->
+      <!-- ══════════════════════════════════════════════════════ -->
+      <section v-else-if="currentRoom === 'history'" key="history" style="padding:32px 20px 0;max-width:900px;margin:0 auto;">
+
+        <div class="text-center mb-10 animate-fade-in">
+          <p class="room-subtitle mb-2">Phòng Lưu Niệm</p>
+          <h1 class="room-title">Ký Ức & Hành Trình</h1>
+          <div class="gold-divider w-24 mt-4 mx-auto"></div>
+        </div>
+
+        <!-- Stats Row -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px;margin-bottom:40px;">
+          <div v-for="stat in classData.stats" :key="stat.label" class="history-card text-center">
+            <div class="stat-number">{{ stat.value }}</div>
+            <div style="font-size:11px;color:#F5EDD677;margin-top:6px;letter-spacing:0.1em;text-transform:uppercase;">{{ stat.label }}</div>
+          </div>
+        </div>
+
+        <!-- Timeline -->
+        <div class="history-card mb-6">
+          <h2 style="font-family:'Playfair Display',serif;font-size:20px;color:#C9A84C;margin-bottom:24px;font-weight:600;">
+            Dòng Thời Gian
+          </h2>
+          <div v-for="(event, i) in classData.timeline" :key="i" style="display:flex;gap:16px;align-items:flex-start;">
+            <div style="display:flex;flex-direction:column;align-items:center;padding-top:4px;">
+              <div class="timeline-dot"></div>
+              <div v-if="i < classData.timeline.length - 1" class="timeline-line"></div>
+            </div>
+            <div :style="{paddingBottom: i < classData.timeline.length - 1 ? '20px' : '0'}">
+              <p style="font-size:10px;color:#C9A84C99;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:3px;">{{ event.date }}</p>
+              <p style="font-family:'Playfair Display',serif;font-size:15px;font-weight:600;color:#F5EDD6;margin-bottom:4px;">{{ event.title }}</p>
+              <p style="font-size:12px;color:#F5EDD677;line-height:1.6;">{{ event.description }}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Memories grid -->
+        <div style="margin-bottom:40px;">
+          <h2 style="font-family:'Playfair Display',serif;font-size:20px;color:#C9A84C;margin-bottom:20px;font-weight:600;">
+            Kỷ Niệm Không Quên
+          </h2>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;">
+            <div v-for="memory in classData.memories" :key="memory.id" class="history-card">
+              <div style="font-size:28px;margin-bottom:10px;">{{ memory.emoji }}</div>
+              <h3 style="font-family:'Playfair Display',serif;font-size:15px;font-weight:600;color:#F5EDD6;margin-bottom:6px;">{{ memory.title }}</h3>
+              <p style="font-size:12px;color:#F5EDD677;line-height:1.65;">{{ memory.description }}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Class slogan -->
+        <div style="text-align:center;padding:40px 24px;border:1px solid rgba(201,168,76,0.2);border-radius:10px;background:linear-gradient(160deg,rgba(201,168,76,0.05),transparent);">
+          <p style="font-size:10px;color:#C9A84C77;letter-spacing:0.3em;text-transform:uppercase;margin-bottom:16px;">Châm Ngôn Lớp</p>
+          <p style="font-family:'Playfair Display',serif;font-size:clamp(18px,4vw,28px);font-weight:600;color:#F5EDD6;line-height:1.4;">
+            "{{ classData.motto }}"
+          </p>
+        </div>
+
+      </section><!-- /history -->
+
+
+      <!-- ══════════════════════════════════════════════════════ -->
+      <!--  ROOM 4 — PERSONAL ROOM (Your Own Memories)           -->
+      <!-- ══════════════════════════════════════════════════════ -->
+      <section v-else-if="currentRoom === 'personal'" key="personal" style="padding:32px 20px 0;max-width:1100px;margin:0 auto;">
+
+        <div class="text-center mb-10 animate-fade-in">
+          <p class="room-subtitle mb-2">Không Gian Riêng</p>
+          <h1 class="room-title">{{ personalData.title }}</h1>
+          <div class="gold-divider w-24 mt-4 mx-auto"></div>
+          <p style="font-size:13px;color:#F5EDD677;margin-top:16px;font-style:italic;font-family:'Playfair Display',serif;max-width:560px;margin-left:auto;margin-right:auto;line-height:1.8;">
+            {{ personalData.intro }}
+          </p>
+        </div>
+
+        <!-- Memory cards grid -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:24px;">
+          <div
+            v-for="entry in personalData.entries"
+            :key="entry.id"
+            class="personal-card animate-slide-up"
+            @click="openEntry(entry)"
+          >
+            <div class="personal-card-photo-wrap">
+              <img v-if="entry.photo" :src="entry.photo" :alt="entry.title" class="personal-card-photo" />
+              <div v-else class="personal-card-placeholder">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#C9A84C" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" opacity="0.55">
+                  <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/>
+                </svg>
+                <span>Thêm Ảnh Tại Đây</span>
+              </div>
+              <span v-if="entry.date" class="personal-card-date">{{ entry.date }}</span>
+            </div>
+            <div class="personal-card-body">
+              <h3>{{ entry.title }}</h3>
+              <p>{{ entry.content }}</p>
+              <div v-if="entry.tags && entry.tags.length" class="personal-card-tags">
+                <span v-for="tag in entry.tags" :key="tag" class="personal-card-tag">{{ tag }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Hint card for empty / extra space -->
+        <div style="margin-top:36px;text-align:center;padding:28px;border:1px dashed rgba(201,168,76,0.25);border-radius:10px;background:linear-gradient(160deg,rgba(201,168,76,0.04),transparent);">
+          <p style="font-size:12px;color:#C9A84C88;line-height:1.8;">
+            Hãy cố gắng đến lúc không thể cố gắng thêm!
+          </p>
+        </div>
+
+      </section><!-- /personal -->
+
+    </transition>
+  </main><!-- /main -->
+
+
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <!--  Bottom Navigation Bar                                             -->
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <nav class="nav-bar">
+    <button
+      v-for="room in rooms"
+      :key="room.id"
+      class="nav-btn"
+      :class="{ active: currentRoom === room.id }"
+      @click="currentRoom = room.id"
+    >
+      <!-- Inline SVG icons for each room -->
+      <svg v-if="room.id === 'hall'" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+      </svg>
+      <svg v-else-if="room.id === 'teachers'" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+      </svg>
+      <svg v-else-if="room.id === 'history'" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+      </svg>
+      <svg v-else-if="room.id === 'personal'" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+      </svg>
+      <span class="label">{{ room.label }}</span>
+    </button>
+  </nav>
+
+
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <!--  Member Modal                                                       -->
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <transition name="room">
+    <div v-if="selectedMember" class="modal-backdrop" @click.self="closeModal">
+      <div class="modal-card" role="dialog" aria-modal="true">
+
+        <!-- Header -->
+        <div class="modal-header">
+          <button class="modal-close" @click="closeModal" aria-label="Đóng">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+          <div style="display:flex;gap:18px;align-items:flex-start;">
+            <!-- Avatar -->
+            <div>
+              <img v-if="selectedMember.photo" :src="selectedMember.photo" :alt="selectedMember.name" class="modal-avatar" />
+              <div v-else class="modal-avatar-placeholder">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#C9A84C" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" opacity="0.5">
+                  <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+                </svg>
+              </div>
+            </div>
+            <!-- Name & info -->
+            <div style="flex:1;padding-top:4px;">
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+                <span class="role-badge">
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="5"/></svg>
+                  {{ selectedMember.role }}
+                </span>
+                <span v-if="selectedMember.isTeacher" class="role-badge" style="background:rgba(201,168,76,0.2);">Giáo Viên</span>
+              </div>
+              <h2 style="font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:#F5EDD6;margin:0 0 4px;">
+                {{ selectedMember.name }}
+              </h2>
+              <p v-if="selectedMember.subject" style="font-size:12px;color:#C9A84C99;">Môn: {{ selectedMember.subject }}</p>
+              <p v-if="selectedMember.birthday" style="font-size:11px;color:#F5EDD655;margin-top:4px;">🎂 {{ selectedMember.birthday }}</p>
+              <p v-if="selectedMember.hometown" style="font-size:11px;color:#F5EDD655;margin-top:2px;">📍 {{ selectedMember.hometown }}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Biography -->
+        <div v-if="selectedMember.bio" class="modal-section">
+          <p class="section-label">Tiểu Sử</p>
+          <p style="font-size:13px;color:#F5EDD6bb;line-height:1.75;">{{ selectedMember.bio }}</p>
+        </div>
+
+        <!-- Quote / Message -->
+        <div v-if="selectedMember.quote" class="modal-section">
+          <p class="section-label">Lời Nhắn</p>
+          <div class="quote-block">
+            "{{ selectedMember.quote }}"
+          </div>
+        </div>
+
+        <!-- Achievements / Tags -->
+        <div v-if="selectedMember.achievements && selectedMember.achievements.length" class="modal-section">
+          <p class="section-label">Thành Tích & Kỷ Niệm</p>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;">
+            <span
+              v-for="item in selectedMember.achievements"
+              :key="item"
+              style="background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.22);border-radius:100px;padding:4px 12px;font-size:11px;color:#F5EDD6cc;"
+            >{{ item }}</span>
+          </div>
+        </div>
+
+        <!-- Notes -->
+        <div v-if="selectedMember.notes" class="modal-section">
+          <p class="section-label">Ghi Chú Đặc Biệt</p>
+          <p style="font-size:13px;color:#F5EDD677;line-height:1.7;font-style:italic;">{{ selectedMember.notes }}</p>
+        </div>
+
+        <!-- Footer -->
+        <div style="padding:16px 28px;text-align:center;border-top:1px solid rgba(201,168,76,0.1);">
+          <span style="font-size:10px;color:#C9A84C44;letter-spacing:0.2em;text-transform:uppercase;">
+            ✦ {{ classData.name }} · {{ classData.year }} ✦
+          </span>
+        </div>
+
+      </div><!-- /modal-card -->
+    </div><!-- /modal-backdrop -->
+  </transition>
+
+
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <!--  Personal Memory Entry Modal                                       -->
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <transition name="room">
+    <div v-if="selectedEntry" class="modal-backdrop" @click.self="closeEntry">
+      <div class="modal-card" role="dialog" aria-modal="true">
+
+        <!-- Header -->
+        <div class="modal-header" style="border-bottom:none;">
+          <button class="modal-close" @click="closeEntry" aria-label="Đóng">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+          <p v-if="selectedEntry.date" class="section-label" style="margin-bottom:6px;">{{ selectedEntry.date }}</p>
+          <h2 style="font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:#F5EDD6;margin:0;padding-right:36px;">
+            {{ selectedEntry.title }}
+          </h2>
+        </div>
+
+        <!-- Photo -->
+        <div v-if="selectedEntry.photo" style="padding:0 28px 0;">
+          <img :src="selectedEntry.photo" :alt="selectedEntry.title" class="entry-modal-photo" />
+        </div>
+
+        <!-- Content -->
+        <div class="modal-section" style="border-top:1px solid rgba(201,168,76,0.1);">
+          <p class="section-label">Câu Chuyện</p>
+          <p style="font-size:13px;color:#F5EDD6bb;line-height:1.85;white-space:pre-line;">{{ selectedEntry.content }}</p>
+        </div>
+
+        <!-- Tags -->
+        <div v-if="selectedEntry.tags && selectedEntry.tags.length" class="modal-section">
+          <p class="section-label">Thẻ Kỷ Niệm</p>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;">
+            <span
+              v-for="tag in selectedEntry.tags"
+              :key="tag"
+              style="background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.22);border-radius:100px;padding:4px 12px;font-size:11px;color:#F5EDD6cc;"
+            >{{ tag }}</span>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="padding:16px 28px;text-align:center;border-top:1px solid rgba(201,168,76,0.1);">
+          <span style="font-size:10px;color:#C9A84C44;letter-spacing:0.2em;text-transform:uppercase;">
+            ✦ {{ personalData.title }} ✦
+          </span>
+        </div>
+
+      </div><!-- /modal-card -->
+    </div><!-- /modal-backdrop -->
+  </transition>
+
+</div><!-- /app -->
+
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<!--  Vue.js Application Script                                            -->
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<script>
+const { createApp, ref, computed, onMounted, watch } = Vue;
+
+createApp({
+  setup() {
+
+    // ── State ─────────────────────────────────────────────────────────
+    const currentRoom    = ref('hall');
+    const selectedMember = ref(null);
+    const selectedEntry  = ref(null);
+
+    // ── Room navigation config ──────────────────────────────────────
+    const rooms = [
+      { id: 'hall',     label: 'Lớp Học'    },
+      { id: 'teachers', label: 'Thầy Cô'    },
+      { id: 'history',  label: 'Ký Ức'      },
+      { id: 'personal', label: 'Góc Riêng'  },
+    ];
+
+    // ── Class meta-data ───────────────────────────────────────────────
+    // TODO: Replace with your real class information
+    const classData = {
+      name:   '12A1',               // ← Your class name
+      year:   '2023 - 2026',        // ← Your school years
+      emblem: '🏛',                  // ← Class logo emoji / symbol
+      motto:  'NOT PERFECT BUT ONLY ONE!',  // ← Class motto
+      stats: [
+        { value: '34',    label: 'Học Sinh'         },
+        { value: '3',     label: 'Năm Học'           },
+        { value: '8',     label: 'Giáo Viên Bộ Môn'  },
+        { value: '∞',     label: 'Kỷ Niệm'           },
+      ],
+      timeline: [
+        {
+          date:        'Năm 2023-2024',
+          title:       'Ngày Khai Giảng',
+          description: 'Lớp 12A1 chính thức được thành lập. Hơn bốn mươi gương mặt lạ lẫm lần đầu ngồi chung một mái trường.',
+        },
+        // {
+        //   date:        'Tháng 1, 2023',
+        //   title:       'Hội Trại Đầu Năm',
+        //   description: 'Chuyến cắm trại đầu tiên tại rừng thông. Những tràng cười, những bài hát, và tình bạn bắt đầu nảy mầm.',
+        // },
+        {
+          date:        'Năm 2024-2025',
+          title:       'Hội Trại',
+          description: 'Cùng nhau dựng trại, cùng nhau hò reo, cùng nhau ngủ, cùng nhau cười,....',
+        },
+        {
+          date:        'Năm 2026',
+          title:       'Lễ Tốt Nghiệp',
+          description: 'Ngày chia tay đẫm nước mắt và nụ cười. Hành trình ba năm khép lại, những cuộc đời mới bắt đầu.',
+        },
+      ],
+      memories: [
+        {
+          id: 1, emoji: '🎭',
+          title:       'Đêm Văn Nghệ',
+          description: 'Hội trường sáng rực đèn, tiếng nhạc vang xa. Mỗi tiết mục là một mảnh ký ức được gắn vào tim.',
+        },
+        {
+          id: 2, emoji: '🏕',
+          title:       'Hội Trại',
+          description: 'Lửa trại bập bùng, đêm sao trời trong. Những người bạn cùng nằm đếm sao và kể những giấc mơ xa.',
+        },
+        {
+          id: 3, emoji: '📚',
+          title:       'Mùa Thi',
+          description: 'Những đêm ôn bài quên ngủ, những tờ đề trắng run tay. Cùng nhau vượt qua là kỷ niệm đẹp nhất.',
+        },
+        {
+          id: 4, emoji: '🌸',
+          title:       'Lễ Tổng Kết',
+          description: 'Áo trắng nón lá, hoa cài tóc. Ngày cuối cùng ngồi chung mái trường — mãi mãi không quên.',
+        },
+      ],
+    };
+
+    // ── Student data (mock — replace with real data) ───────────────
+    // For `photo`: use an image URL, or leave as '' to show placeholder.
+    // Split: first 3 go to LEFT wall, next 3 go to RIGHT wall, rest → grid.
+    const students = [
+      {
+        id: 1,
+        name:         'Nguyễn Phú Cường',
+        role:         'Thành viên',
+        photo:        'img/PhuCuong.jpg',
+        birthday:     '20/02/2008',
+        hometown:     'THPT Tân Lược',
+        bio:          'Là người dẫn đầu hành động với thế mạnh đặc biệt trong lĩnh vực chế tác mô hình và kỹ thuật chi tiết. Mang trong mình tư duy điềm tĩnh của một người làm kỹ thuật cùng tính cách hòa đồng, hoạt bát, bạn không chỉ tiên phong đưa tập thể vượt qua các thử thách phong trào mà còn là người định hình nguồn năng lượng tích cực, kết nối mọi người bằng sự vui vẻ và chuyên nghiệp.',
+        quote:        'Chúc mọi người luôn gặp nhiều may mắn và thành công!',
+        achievements: ['GIẢI KHOA HỌC KỸ THUẬT CẤP TỈNH'],
+        notes:        'Nghĩa vụ cuối cùng của cấp 3: "Hãy sống thật bình yên!" (Phùng Vĩnh Yên)',
+        isTeacher:    false,
+      },
+      {
+        id: 2,
+        name:         'Lâm Mỹ Di',
+        role:         'Thành viên',
+        photo:        'img/MyDi.jpg',
+        birthday:     '08/01/2008',
+        hometown:     'THPT Tân Lược',
+        bio:          'Là một người hướng nội sâu sắc, Di luôn mang đến cho những người xung quanh một cảm giác dịu nhẹ và vô cùng dễ chịu ngay từ những lời tiếp xúc đầu tiên. Sự tinh tế trong từng cử chỉ cùng phong cách nhẹ nhàng, nhã nhặn của bạn không chỉ tạo nên một dấu ấn cá nhân đầy cuốn hút, mà còn là sợi dây kết nối thầm lặng, mang lại sự bình yên và cân bằng cho cả tập thể.',
+        quote:        'Chúc bình an!',
+        achievements: [],
+        notes:        'Nghĩa vụ cuối cùng của cấp 3: "Hãy sống thật bình yên!" (Phùng Vĩnh Yên)',
+        isTeacher:    false,
+      },
+      {
+        id: 3,
+        name:         'Ca Thị Thùy Duyên',
+        role:         'Lớp phó học tập',
+        photo:        'img/ThuyDuyen.jpg',
+        birthday:     '07/06/2008',
+        hometown:     'THPT Tân Lược',
+        bio:          'Là một hình mẫu tài sắc vẹn toàn, Duyên luôn khẳng định mình qua tinh thần nỗ lực bền bỉ để đạt kết quả xuất sắc trong tất cả các môn học. Với vai trò Phó ban Học tập, bạn là cầu nối vững chắc tạo sự gắn kết nhịp nhàng giữa giáo viên và tập thể. Trong công việc, Thùy Duyên vô cùng nghiêm túc, quyết đoán và có phần thẳng thắn, quyết liệt; chính sự cá tính đó kết hợp cùng tinh thần trách nhiệm cao độ đã khiến bạn trở thành một điểm tựa vô cùng đáng tin cậy, luôn đưa ra những quyết định đúng đắn cho mọi người.',
+        quote:        'Hãy thật tự do, hạnh phúc, tận hưởng cuộc đời của chính mình!',
+        achievements: ['GIẢI HÓA HỌC CẤP TỈNH', '...'],
+        notes:        'Nghĩa vụ cuối cùng của cấp 3: "Hãy sống thật bình yên!" (Phùng Vĩnh Yên)',
+        isTeacher:    false,
+      },
+      {
+        id: 4,
+        name:         'Nguyễn Tấn Đạt',
+        role:         'Thành viên',
+        photo:        'img/TanDat.jpg',
+        birthday:     '06/03/2008',
+        hometown:     'THPT Tân Lược',
+        bio:          'Được biết đến là một trong những thành viên cốt cán và là "cây hài tẻn tẻn" của lớp, Tấn Đạt sở hữu nét tính cách vô cùng vui tính cùng sự hóm hỉnh, duyên dáng đầy khác biệt. Bằng sự hài hước độc bản và năng lượng tích cực của mình, bạn không chỉ dễ dàng lan tỏa niềm vui, xóa tan mọi áp lực học đường mà còn là nhân tố không thể thiếu, luôn giữ cho bầu không khí của tập thể lớp luôn ngập tràn sự tươi mới và gắn kết.',
+        quote:        'Chúc bình an!',
+        achievements: [],
+        notes:        'Nghĩa vụ cuối cùng của cấp 3: "Hãy sống thật bình yên!" (Phùng Vĩnh Yên)',
+        isTeacher:    false,
+      },
+      {
+        id: 5,
+        name:         'Lê Văn Đoàn',
+        role:         'Thành viên',
+        photo:        'img/VanDoan.png',
+        birthday:     '18/09/2008',
+        hometown:     'THPT Tân Lược',
+        bio:          'Sở hữu một tâm hồn nghệ sĩ cùng niềm đam mê nghệ thuật to lớn.',
+        quote:        'Hãy lắng nghe chính mình!',
+        achievements: [],
+        notes:        'Nghĩa vụ cuối cùng của cấp 3: "Hãy sống thật bình yên!" (Phùng Vĩnh Yên)',
+        isTeacher:    false,
+      },
+      {
+        id: 6,
+        name:         'Ngô Hải Đường',
+        role:         'Thủ quỹ',
+        photo:        'img/HaiDuong.jpg',
+        birthday:     '22/09/2008',
+        hometown:     'THPT Tân Lược',
+        bio:          'Đảm nhận vai trò thủ quỹ của lớp, Hải Đường luôn là một điểm tựa vô cùng đáng tin cậy nhờ sự cẩn trọng và tinh thần trách nhiệm cao. Giữa những bộn bề của công việc, bạn vẫn luôn giữ được sự điềm tĩnh đáng quý và một nụ cười rạng rỡ trên môi. Chính sự nhẹ nhàng và năng lượng tích cực ấy đã tạo nên một cảm giác thoải mái, dễ chịu cho bất kỳ ai khi tiếp xúc, biến bạn thành một mảnh ghép gắn kết đầy ấm áp của tập thể.',
+        quote:        'Chúc bình an!',
+        achievements: [],
+        notes:        'Nghĩa vụ cuối cùng của cấp 3: "Hãy sống thật bình yên!" (Phùng Vĩnh Yên)',
+        isTeacher:    false,
+      },
+      {
+        id: 7,
+        name:         'Trần Lê Mỹ Hạnh',
+        role:         'Thành viên',
+        photo:        'img/MyHanh.jpg',
+        birthday:     '18/01/2008',
+        hometown:     'THPT Tân Lược',
+        bio:          'Sở hữu đôi tay khéo léo và năng khiếu hội họa xuất sắc, Mỹ Hạnh luôn là thành viên cốt cán đứng sau những bức tranh bảng đầy ấn tượng của lớp. Dù là trong các buổi sinh hoạt định kỳ hay những dịp chào đón ngày hội phụ huynh trang trọng, những nét vẽ tài hoa và tư duy thẩm mỹ của bạn đã biến chiếc bảng đen quen thuộc thành những tác phẩm nghệ thuật độc đáo, góp phần làm nên không gian lớp học rực rỡ và tràn đầy niềm tự hào.',
+        quote:        'Hãy cố gắng!!! Học tập hết sức mình nhé, để biến mùa hạ năm ấy trở nên rực rỡ nhé! -memento mori-',
+        achievements: [],
+        notes:        'Nghĩa vụ cuối cùng của cấp 3: "Hãy sống thật bình yên!" (Phùng Vĩnh Yên)',
+        isTeacher:    false,
+      },
+      {
+        id: 8,
+        name:         'Nguyễn Khả Hân',
+        role:         'Thành viên',
+        photo:        'img/KhaHan.jpg',
+        birthday:     '29/04/2008',
+        hometown:     'THPT Tân Lược',
+        bio:          'Mang một nét tính cách trầm lặng và khép kín, Hân chọn cho mình một lối sống nhẹ nhàng, không ồn ào giữa không gian lớp học. Sự ít biểu lộ và thế giới nội tâm sâu sắc của bạn không chỉ tạo nên một dấu ấn cá nhân đầy riêng biệt, mà còn mang lại cảm giác bình yên, điềm tĩnh mỗi khi xuất hiện, là một mảnh ghép dịu dàng và đầy bí ẩn của tập thể.',
+        quote:        'Chúc bình an!',
+        achievements: [],
+        notes:        'Nghĩa vụ cuối cùng của cấp 3: "Hãy sống thật bình yên!" (Phùng Vĩnh Yên)',
+        isTeacher:    false,
+      },
+      {
+        id: 9,
+        name:         'Đinh Nguyễn Gia Huy',
+        role:         'Thành viên',
+        photo:        'img/GiaHuy.jpg',
+        birthday:     '24/07/2008',
+        hometown:     'THPT Tân Lược',
+        bio:          'Là một "bách khoa toàn thư bản cờ-rắc" đầy thú vị của lớp, Huy sở hữu vốn hiểu biết phong phú và khả năng học đều ở tất cả các môn học. Điểm mạnh lớn nhất của bạn nằm ở tư duy vô cùng nhanh nhạy và khả năng nắm bắt vấn đề nhạy bén trong mọi tình huống. Bên cạnh năng lực học tập đa dạng, chính nét tính cách hóm hỉnh, đôi phần "tẻn tẻn" duyên dáng của Huy đã biến bạn thành một mảnh ghép độc đáo, luôn mang lại sự bất ngờ và tiếng cười thông minh cho tập thể.',
+        quote:        'Chúc 12A1 may mắn!',
+        achievements: [],
+        notes:        'Nghĩa vụ cuối cùng của cấp 3: "Hãy sống thật bình yên!" (Phùng Vĩnh Yên)',
+        isTeacher:    false,
+      },
+      {
+        id: 10,
+        name:         'Nguyễn Thị Ngọc Huyền',
+        role:         'Thành viên',
+        photo:        'img/NgocHuyen.jpg',
+        birthday:     '19/07/2008',
+        hometown:     'THPT Tân Lược',
+        bio:          'Sở hữu một tư duy sâu sắc cùng sự chậm rãi, chín chắn trong suy nghĩ, Ngọc Huyền là người luôn làm chủ được tiếng nói của mình trong tập thể. Mỗi lời bạn thốt ra đều mang một sức thuyết phục mạnh mẽ và thấu tình đạt lý. Dù là những lời khen ngợi hay các đóng góp thẳng thắn, cách biểu đạt tinh tế của Ngọc Huyền luôn mang lại cảm giác thoải mái, dễ chịu và nhận được sự đồng thuận tuyệt đối từ thầy cô và bạn bè xung quanh.',
+        quote:        'Chúc các bạn thành công rực rỡ trên con đường mà mình chọn, mãi vui vẻ và hạnh phúc. SOFIA YÊU CÁC BẠN',
+        achievements: [],
+        notes:        'Nghĩa vụ cuối cùng của cấp 3: "Hãy sống thật bình yên!" (Phùng Vĩnh Yên)',
+        isTeacher:    false,
+      },
+      {
+        id: 11,
+        name:         'Đặng Tấn Hưng',
+        role:         'Thành viên',
+        photo:        'img/TanHung.png',
+        birthday:     '25/10/2008',
+        hometown:     'THPT Tân Lược',
+        bio:          'Là một mảnh ghép vô cùng đặc biệt của tập thể, Tấn Hưng như một "chuyên gia công nghệ" kiêm kỹ thuật viên máy tính bán thời gian đáng tin cậy của lớp. Bên cạnh sự nhạy bén với máy móc, bạn còn sở hữu khiếu hài hước đầy "vô tri" và độc bản — nơi những miếng hài đôi khi tuy "nhạt" nhưng lại là chất xúc tác tạo nên tiếng cười giòn giã cho bạn bè. Đằng sau những khoảnh khắc lúc trầm tính, lúc lại vô cùng "nhoi nhoi" tinh nghịch ấy là một Tấn Hưng rất sâu sắc và tinh tế, luôn âm thầm quan tâm và mang năng lượng tích cực đến cho mọi người.',
+        quote:        'Hãy cố gắng đến lúc không thể cố gắng!',
+        achievements: ['GIẢI TIN HỌC CẤP TỈNH', '...'],
+        notes:        'Nghĩa vụ cuối cùng của cấp 3: "Hãy sống thật bình yên!" (Phùng Vĩnh Yên)',
+        isTeacher:    false,
+      },
+      {
+        id: 12,
+        name:         'Nguyễn Ngọc Anh Khoa',
+        role:         'Thành viên',
+        photo:        'img/AnhKhoa.png',
+        birthday:     '06/01/2008',
+        hometown:     'THPT Tân Lược',
+        bio:          'Là "cây hài chính hiệu" của tập thể, Anh Khoa sở hữu năng lực tạo tiếng cười tự nhiên mà hiếm ai có được khi chỉ cần mở lời là không khí đã tràn ngập niềm vui. Điểm độc đáo làm nên thương hiệu của bạn chính là tư chất "fast flow" với tốc độ nói nhanh như gió, đôi khi khiến bạn bè phải bật chế độ "phiên dịch" để bắt kịp dòng suy nghĩ. Chính sự nhanh nhạy, hoạt ngôn và nguồn năng lượng bùng nổ ấy đã biến Anh Khoa trở thành một nhân tố khuấy động niềm vui không thể thay thế của lớp học.',
+        quote:        'Chúc bình an!',
+        achievements: ['GIẢI TOÁN HỌC CẤP TỈNH', '...'],
+        notes:        'Nghĩa vụ cuối cùng của cấp 3: "Hãy sống thật bình yên!" (Phùng Vĩnh Yên)',
+        isTeacher:    false,
+      },
+      {
+        id: 13,
+        name:         'Đinh Minh Lel',
+        role:         'Thành viên',
+        photo:        'img/MinhLel.jpg',
+        birthday:     '05/09/2008',
+        hometown:     'THPT Tân Lược',
+        bio:          'Như một "bức tường thành" vững chãi về tư duy Toán học, Minh Lel luôn khiến bạn bè trầm trồ bởi khả năng phân tích logic và nhạy bén với các con số. Không chỉ xuất sắc trong học thuật, bạn còn sở hữu một sự linh hoạt và khả năng thích ứng tuyệt vời trong mọi hoạt động của lớp. Đúng nghĩa là một mảnh ghép "nhạc nào cũng nhảy", Minh Lel luôn sẵn sàng đương đầu với mọi thử thách, biến sự thông minh và tính cách nhạy bén của mình thành nguồn năng lượng tiên phong đầy cuốn hút.',
+        quote:        'Chúc bình yên!',
+        achievements: ['GIẢI TOÁN HỌC CẤP TỈNH', '...'],
+        notes:        'Nghĩa vụ cuối cùng của cấp 3: "Hãy sống thật bình yên!" (Phùng Vĩnh Yên)',
+        isTeacher:    false,
+      },
+      {
+        id: 14,
+        name:         'Ca Huỳnh Mai',
+        role:         'Thành viên',
+        photo:        'img/A1_avt.png',
+        birthday:     '27/05/2008',
+        hometown:     'THPT Tân Lược',
+        bio:          'Là "chiến thần mỏ hỗn" của lớp với sự bộc trực và sắc sảo đầy vui nhộn, Huỳnh Mai luôn biết cách tạo nên những màn đối đáp kịch tính nhưng không kém phần hài hước. Điểm cuốn hút nhất ở bạn chính là tinh thần lạc quan cùng nụ cười rạng rỡ luôn thường trực trên môi. Chính sự thẳng thắn, cá tính kết hợp với nguồn năng lượng tích cực ấy đã biến Huỳnh Mai thành một mảnh ghép độc bản, luôn mang lại bầu không khí sôi nổi và tiếng cười sảng khoái cho tập thể.',
+        quote:        'Chúc bình an!',
+        achievements: [],
+        notes:        'Nghĩa vụ cuối cùng của cấp 3: "Hãy sống thật bình yên!" (Phùng Vĩnh Yên)',
+        isTeacher:    false,
+      },
+      {
+        id: 15,
+        name:         'Huỳnh Nguyễn Xuân Mai',
+        role:         'Thành viên',
+        photo:        'img/XuanMai.jpg',
+        birthday:     '03/01/2008',
+        hometown:     'THPT Tân Lược',
+        bio:          'Sở hữu nét tính cách hoạt bát và tràn đầy năng lượng, Xuân Mai là người luôn mang đến những "miếng hài" đầy vô tri nhưng lại có sức công phá tiếng cười cực kỳ mạnh mẽ. Điểm đặc biệt và đáng yêu nhất ở bạn chính là khả năng lan tỏa niềm vui tự nhiên đến mức ngay cả những lúc bản thân đang buồn, sự biểu cảm và cách trò chuyện của bạn vẫn khiến bạn bè xung quanh phải bật cười thích thú. Sự hiện diện của Xuân Mai luôn là liều thuốc tinh thần vô giá, giữ cho lớp học luôn ngập tràn sự vui vẻ và lạc quan.',
+        quote:        'Hiền tài là tương lai của đất nước. Chúc các bạn giữ vững mục tiêu và tiến về phía trước, thành công nhớ tìm mình nha!',
+        achievements: [],
+        notes:        'Nghĩa vụ cuối cùng của cấp 3: "Hãy sống thật bình yên!" (Phùng Vĩnh Yên)',
+        isTeacher:    false,
+      },
+      {
+        id: 16,
+        name:         'Mai Nguyễn Ái Minh',
+        role:         'Thành viên',
+        photo:        'img/AiMinh.jpg',
+        birthday:     '19/05/2008',
+        hometown:     'THPT Tân Lược',
+        bio:          'Đằng sau diện mạo luôn vui tính và nụ cười rạng rỡ thường trực trên môi, Ái Minh là một người sở hữu thế giới nội tâm cùng những suy nghĩ vô cùng sâu sắc. Bạn luôn biết cách đón nhận mọi điều bằng một tinh thần lạc quan, dùng niềm vui để lan tỏa năng lượng tích cực đến mọi người xung quanh. Sự kết hợp hoàn hảo giữa nét hóm hỉnh bên ngoài và chiều sâu tư duy bên trong đã biến Ái Minh thành một mảnh ghép đầy tinh tế, vừa đáng yêu lại vừa vô cùng thấu hiểu của tập thể.',
+        quote:        'Chúc một đời an yên!',
+        achievements: [],
+        notes:        'Nghĩa vụ cuối cùng của cấp 3: "Hãy sống thật bình yên!" (Phùng Vĩnh Yên)',
+        isTeacher:    false,
+      },
+      {
+        id: 17,
+        name:         'Nguyễn Thị Diễm My',
+        role:         'Thành viên',
+        photo:        'img/DiemMy.png',
+        birthday:     '15/11/2008',
+        hometown:     'THPT Tân Lược',
+        bio:          'Mang một phong thái điềm đạm và chậm rãi, Diễm My là hiện thân của sự dịu dàng và nét thư thái giữa không gian lớp học sôi nổi. Cách trò chuyện nhẹ nhàng, từ tốn của bạn không chỉ tạo nên một sức hút rất riêng mà còn luôn mang lại cảm giác bình yên, dễ chịu cho mọi người xung quanh mỗi khi tiếp xúc. Sự hiện diện mang tính kết nối đầy ấm áp và tinh tế ấy đã biến Diễm My thành một mảnh ghép bình yên không thể thiếu của tập thể.',
+        quote:        'Nhất định phải đỗ nguyện vọng 1!',
+        achievements: [],
+        notes:        'Nghĩa vụ cuối cùng của cấp 3: "Hãy sống thật bình yên!" (Phùng Vĩnh Yên)',
+        isTeacher:    false,
+      },
+      {
+        id: 18,
+        name:         'Bùi Thị Tuyết Nghi',
+        role:         'Thành viên',
+        photo:        'img/TuyetNghi.jpg',
+        birthday:     '13/03/2008',
+        hometown:     'THPT Tân Lược',
+        bio:          'Như một nguồn năng lượng tích cực của tập thể, Tuyết Nghi luôn là người tiên phong tạo nên những tiếng cười rộn rã và khuấy động bầu không khí vui tươi cho lớp học. Đằng sau diện mạo rạng rỡ ấy là một tinh thần kiên trì, luôn không ngừng cố gắng, nỗ lực trong mọi thử thách, cùng một thế giới nội tâm vô cùng sâu sắc, chín chắn. Sự kết hợp giữa nét vui tươi bên ngoài và chiều sâu tâm hồn bên trong đã biến Tuyết Nghi thành một mảnh ghép đầy ấm áp và đáng trân trọng của lớp.',
+        quote:        'Chúc các bạn 12A1 sẽ thành công rực rỡ với lựa chọn của mình. Hãy tự tin, cố gắng để năm 12 thật ý nghĩa và xứng đáng với công sức mình bỏ ra. I LOVE YOU',
+        achievements: [],
+        notes:        'Nghĩa vụ cuối cùng của cấp 3: "Hãy sống thật bình yên!" (Phùng Vĩnh Yên)',
+        isTeacher:    false,
+      },
+      {
+        id: 19,
+        name:         'Huỳnh Tú Nguyên',
+        role:         'Thành viên',
+        photo:        'img/TuNguyen.jpg',
+        birthday:     '26/11/2008',
+        hometown:     'THPT Tân Lược',
+        bio:          'Sở hữu một nụ cười rạng rỡ luôn mang đến cảm giác vui tươi và tràn đầy năng lượng, Tú Nguyên là người dễ dàng lan tỏa sự ấm áp đến với mọi người xung quanh. Không chỉ dừng lại ở một tính cách đáng mến, bạn còn khiến tập thể phải trầm trồ bởi một tài năng hội họa vô cùng đáng kinh ngạc. Những nét vẽ tài hoa, đầy tính nghệ thuật sáng tạo của Tú Nguyên không chỉ bộc lộ gu thẩm mỹ xuất sắc mà còn là niềm tự hào lớn, góp phần tô điểm cho bức tranh muôn màu của lớp học.',
+        quote:        'Chúc tất cả các bạn thật thành công trên con đường mình chọn. Phải thật rực rỡ nha!',
+        achievements: [],
+        notes:        'Nghĩa vụ cuối cùng của cấp 3: "Hãy sống thật bình yên!" (Phùng Vĩnh Yên)',
+        isTeacher:    false,
+      },
+      {
+        id: 20,
+        name:         'Võ Thị Huỳnh Như',
+        role:         'Thành viên',
+        photo:        'img/HuynhNhu.png',
+        birthday:     '01/10/2008',
+        hometown:     'THPT Tân Lược',
+        bio:          'Lựa chọn cho mình một phong thái trầm lặng và nhẹ nhàng trong cuộc sống hàng ngày, Huỳnh Như luôn mang lại cảm giác điềm tĩnh, sâu sắc cho không gian lớp học. Tuy nhiên, đằng sau nét khép kín ấy là một tinh thần tập thể cao độ — bạn luôn sẵn sàng cởi mở, hòa mình hết mình và kết nối đầy nhiệt huyết cùng bạn bè trong mọi hoạt động chung. Sự cân bằng tinh tế giữa thế giới nội tâm bình yên và sự năng nổ đúng lúc đã biến Huỳnh Như thành một mảnh ghép vô cùng đáng mến và gắn kết của tập thể.',
+        quote:        'Bình tĩnh, tự tin, cố lên!',
+        achievements: [],
+        notes:        'Nghĩa vụ cuối cùng của cấp 3: "Hãy sống thật bình yên!" (Phùng Vĩnh Yên)',
+        isTeacher:    false,
+      },
+      {
+        id: 21,
+        name:         'Nguyễn Hoàng Minh Phúc',
+        role:         'Thành viên',
+        photo:        'img/MinhPhuc.jpg',
+        birthday:     '30/12/2008',
+        hometown:     'THPT Tân Lược',
+        bio:          'Là chiếc "GPS linh hoạt" của lớp với những màn dịch chuyển vị trí đầy bất ngờ, Minh Phúc luôn mang đến sự mới mẻ và khuấy động không khí ở mỗi nơi mình đặt chân đến. Dù trong công việc hay cuộc sống đôi lúc có phần nóng vội, nhưng chính nét tính cách vui vẻ, cởi mở và sự hòa đồng tuyệt vời đã giúp bạn luôn kết nối nhanh chóng với mọi thành viên. Sự nhiệt thành và nguồn năng lượng xông xáo ấy đã biến Minh Phúc thành một mảnh ghép đầy sinh động và gắn kết của tập thể.',
+        quote:        'Chúc bình an!',
+        achievements: [],
+        notes:        'Nghĩa vụ cuối cùng của cấp 3: "Hãy sống thật bình yên!" (Phùng Vĩnh Yên)',
+        isTeacher:    false,
+      },
+      {
+        id: 22,
+        name:         'Trần Nguyễn Thanh Quý',
+        role:         'Thành viên',
+        photo:        'img/ThanhQuy.png',
+        birthday:     '29/10/2008',
+        hometown:     'THPT Tân Lược',
+        bio:          'Như một nửa thế giới đặc biệt và độc lập của tập thể 12A1, Thanh Quý sở hữu một sự trầm lặng đến mức đáng kinh ngạc, tạo nên một phong thái điềm tĩnh đầy cuốn hút. Không ồn ào, không phô trương, bạn chinh phục tất cả mọi người bằng một thái độ sống mực thước cùng nền tảng tri thức học tập uyên bác. Sự tập trung cao độ và tư duy xuất sắc của Thanh Quý chính là tấm gương lớn, là nguồn cảm hứng khiến bất kỳ thành viên nào trong lớp cũng phải trầm trồ và nể phục học hỏi.',
+        quote:        'Chúc bình an!',
+        achievements: [],
+        notes:        'Nghĩa vụ cuối cùng của cấp 3: "Hãy sống thật bình yên!" (Phùng Vĩnh Yên)',
+        isTeacher:    false,
+      },
+      {
+        id: 23,
+        name:         'Nguyễn Ngọc Như Quỳnh',
+        role:         'Thành viên',
+        photo:        'img/NhuQuynh.jpg',
+        birthday:     '15/04/2008',
+        hometown:     'THPT Tân Lược',
+        bio:          'Sở hữu một phong thái chậm rãi, điềm đạm trong nhịp sống hàng ngày, Như Quỳnh luôn mang lại cảm giác bình yên và dễ chịu cho những người xung quanh. Thế nhưng, ẩn sau nét thư thái ấy là một tinh thần năng nổ — bạn luôn sẵn sàng bùng nổ, trở nên sôi động và nhiệt huyết hết mình trong mọi cuộc vui của tập thể. Chính sự thoải mái, cởi mở cùng tính cách đón nhận mọi điều một cách nhẹ nhàng đã biến Như Quỳnh thành một mảnh ghép gắn kết tuyệt vời, được mọi thành viên trong lớp yêu mến.',
+        quote:        'Chúc bình an!',
+        achievements: [],
+        notes:        'Nghĩa vụ cuối cùng của cấp 3: "Hãy sống thật bình yên!" (Phùng Vĩnh Yên)',
+        isTeacher:    false,
+      },
+      {
+        id: 24,
+        name:         'Huỳnh Thị Minh Tâm',
+        role:         'Thành viên',
+        photo:        'img/A1_avt.png',
+        birthday:     '19/10/2008',
+        hometown:     'THPT Tân Lược',
+        bio:          'Chọn cho mình một phong thái trầm lặng, điềm tĩnh trong tập thể, Minh Tâm luôn mang lại cảm giác của một người quan sát sâu sắc. Tuy nhiên, đằng sau sự tĩnh lặng ấy là một tư duy vô cùng nhạy bén và sắc xảo. Bạn sở hữu nét cá tính thẳng thắn, kiên định cùng những cái nhìn tinh tường, tạo nên một sức hút rất riêng — không ồn ào nhưng một khi đã lên tiếng đều mang tính thuyết phục cao. Sự kết hợp giữa vẻ ngoài trầm lắng và nội lực sắc sảo bên trong đã biến Minh Tâm thành một mảnh ghép đầy thú vị và độc đáo của lớp.',
+        quote:        'Chúc bình an!',
+        achievements: [],
+        notes:        'Nghĩa vụ cuối cùng của cấp 3: "Hãy sống thật bình yên!" (Phùng Vĩnh Yên)',
+        isTeacher:    false,
+      },
+      {
+        id: 25,
+        name:         'Thái Gia Thế',
+        role:         'Lớp trưởng',
+        photo:        'img/GiaThe.png',
+        birthday:     '25/01/2008',
+        hometown:     'THPT Tân Lược',
+        bio:          'Như một người "đáng tin" và là nguồn lan tỏa năng lượng tích cực của tập thể, Gia Thế sở hữu khiếu hài hước độc đáo với những miếng hài "khó đỡ" mang thương hiệu rất riêng. Với vai trò dẫn dắt, bạn không gò bó lớp vào những khuôn mẫu áp lực mà luôn tìm kiếm những hướng đi đổi mới, mang lại bầu không khí thoải mái, tự do và đầy cảm hứng cho tất cả mọi người. Chính sự cân bằng giữa tinh thần trách nhiệm và tư duy phóng khoáng ấy đã biến Gia Thế trở thành một chỗ dựa tinh thần tuyệt vời, giúp tập thể luôn gắn kết và phát triển một cách tự nhiên nhất.',
+        quote:        'Our stories will always shine!',
+        achievements: ['GIẢI KHOA HỌC KỸ THUẬT CẤP TỈNH'],
+        notes:        'Nghĩa vụ cuối cùng của cấp 3: "Hãy sống thật bình yên!" (Phùng Vĩnh Yên)',
+        isTeacher:    false,
+      },
+      {
+        id: 26,
+        name:         'Nguyễn Hoàng Cát Tiên',
+        role:         'Thành viên',
+        photo:        'img/CatTien.jpg',
+        birthday:     '21/07/2008',
+        hometown:     'THPT Tân Lược',
+        bio:          'Sở hữu một phong thái tự tin cùng chất giọng đầy sức thuyết phục, Cát Tiên là người mà mỗi khi tiếng nói cất lên đều có khả năng khiến mọi người xung quanh phải tập trung lắng nghe một cách đầy nể phục. Được ví như người nắm giữ "quyền lực ngầm" của tập thể, bạn không dùng sự áp đặt mà chinh phục lớp học bằng tầm ảnh hưởng tự nhiên, sự nhạy bén và khả năng dẫn dắt khéo léo. Không chỉ vậy, Cát Tiên còn là người khơi nguồn cho những hoạt động đầy thú vị và ngập tràn niềm vui, biến sức ảnh hưởng của mình thành sợi dây kết nối giúp lớp học luôn sôi động và gắn kết.',
+        quote:        'Thật thành công trong tương lai nhé!',
+        achievements: [],
+        notes:        'Nghĩa vụ cuối cùng của cấp 3: "Hãy sống thật bình yên!" (Phùng Vĩnh Yên)',
+        isTeacher:    false,
+      },
+      {
+        id: 27,
+        name:         'Nguyễn Thị Cẩm Tiên',
+        role:         'Thành viên',
+        photo:        'img/CamTien.jpg',
+        birthday:     '15/07/2008',
+        hometown:     'THPT Tân Lược',
+        bio:          'Là hiện thân của sự kết hợp hoàn hảo giữa nét nhẹ nhàng, dịu dàng và một phong thái tự tin đầy cuốn hút, Cẩm Tiên luôn biết cách làm chủ không gian theo cách riêng của mình. Điểm tỏa sáng nhất ở bạn chính là nguồn năng lượng vui vẻ cùng nụ cười rạng rỡ luôn nở trên môi trong mọi khoảnh khắc. Chính sự điềm tĩnh, tự tin kết hợp với tinh thần lạc quan, ấm áp ấy đã giúp Cẩm Tiên dễ dàng kết nối và mang lại cảm giác thoải mái, dễ chịu cho mọi người xung quanh, trở thành một mảnh ghép đầy yêu thương của tập thể.',
+        quote:        'Chúc rất cả chúc ta sẽ có cuộc đời thật rực rỡ!',
+        achievements: [],
+        notes:        'Nghĩa vụ cuối cùng của cấp 3: "Hãy sống thật bình yên!" (Phùng Vĩnh Yên)',
+        isTeacher:    false,
+      },
+      {
+        id: 28,
+        name:         'Nguyễn Thị Mỹ Tiên',
+        role:         'Thành viên',
+        photo:        'img/MyTien.png',
+        birthday:     '20/05/2008',
+        hometown:     'THPT Tân Lược',
+        bio:          'Sở hữu một "vũ khí bí mật" là giọng cười vô cùng đặc biệt và có tính sát thương cao, Mỹ Tiên là người có khả năng khiến cả tập thể phải cười phá lên theo mỗi khi bạn bắt nhịp. Điểm độc đáo ở bạn chính là những "miếng cười" dai dẳng, mang theo một nguồn năng lượng vô tri đầy giải trí và có sức lây lan vô cùng mạnh mẽ đến mọi người xung quanh. Sự hiện diện đầy hài hước, hồn nhiên và khuấy động ấy đã biến Mỹ Tiên thành một liều thuốc vitamin vui vẻ không thể thiếu, luôn giữ cho bầu không khí của lớp học tràn ngập tiếng cười rộn rã.',
+        quote:        'Chúc bình an!',
+        achievements: [],
+        notes:        'Nghĩa vụ cuối cùng của cấp 3: "Hãy sống thật bình yên!" (Phùng Vĩnh Yên)',
+        isTeacher:    false,
+      },
+      {
+        id: 29,
+        name:         'Phạm Huỳnh Thanh Tuấn',
+        role:         'Thành viên',
+        photo:        'img/ThanhTuan.jpg',
+        birthday:     '29/02/2008',
+        hometown:     'THPT Tân Lược',
+        bio:          'Là một cá nhân đầy tài năng và sở hữu ý chí tiến thủ mạnh mẽ, Thanh Tuấn luôn không ngừng nỗ lực, cố gắng hết mình để hướng tới những mục tiêu trong tương lai. Trong cuộc sống hàng ngày, bạn lựa chọn cho mình một phong thái có đôi phần trầm tính, sâu sắc; thế nhưng ẩn sau nét điềm đạm ấy lại là một tâm hồn vô cùng hoạt bát, hòa đồng. Thanh Tuấn luôn sẵn sàng bắt nhịp cùng tập thể và mang lại những tiếng cười thả ga cho bạn bè bằng các "miếng hài vô tri" đầy bất ngờ, thú vị. Sự kết hợp giữa bản lĩnh kiên cường và khiếu hài hước duyên dáng đã biến bạn thành một mảnh ghép vô cùng đáng mến và trân trọng của lớp.',
+        quote:        'Hãy luôn tự tin, hết mình và tỏa sáng!',
+        achievements: [],
+        notes:        'Nghĩa vụ cuối cùng của cấp 3: "Hãy sống thật bình yên!" (Phùng Vĩnh Yên)',
+        isTeacher:    false,
+      },
+      {
+        id: 30,
+        name:         'Huỳnh Phan Quốc Việt',
+        role:         'Thành viên',
+        photo:        'img/QuocViet.png',
+        birthday:     '05/01/2008',
+        hometown:     'THPT Tân Lược',
+        bio:          'Là "chiến thần giấu nghề" của tập thể, Quốc Việt sở hữu năng lực học tập xuất sắc khi có thể chinh phục mọi môn học một cách đầy ấn tượng. Nhìn từ bên ngoài, bạn lựa chọn cho mình một phong thái có đôi phần trầm lặng, không phô trương bản thân; thế nhưng khi thực sự tiếp xúc, mọi người đều sẽ bị chinh phục bởi một tính cách vô cùng hòa đồng, cởi mở cùng nụ cười luôn rạng rỡ trên môi. Sự kết hợp giữa tài năng vượt trội, chiều sâu điềm tĩnh và sự thân thiện, ấm áp đã biến Quốc Việt thành một mảnh ghép đầy bản lĩnh và được mọi người quý mến.',
+        quote:        'Chúc bình an!',
+        achievements: ['GIẢI HÓA HỌC CẤP TỈNH', '...'],
+        notes:        'Nghĩa vụ cuối cùng của cấp 3: "Hãy sống thật bình yên!" (Phùng Vĩnh Yên)',
+        isTeacher:    false,
+      },
+      {
+        id: 31,
+        name:         'Ngô Ngọc Vy',
+        role:         'Thành viên',
+        photo:        'img/NgocVy.jpg',
+        birthday:     '26/07/2008',
+        hometown:     'THPT Tân Lược',
+        bio:          'Là một hình mẫu "tài sắc vẹn toàn" đích thực của tập thể, Ngọc Vy luôn khiến mọi người phải ngưỡng mộ bởi sự xuất sắc và toàn diện trên mọi lĩnh vực. Từ năng lực học tập đáng nể, tài năng hội họa đầy thiên phú cho đến kỹ năng giao tiếp khéo léo, bạn đều hoàn thành một cách vô cùng ấn tượng. Không dừng lại ở những tài năng vượt trội, Ngọc Vy còn chinh phục trái tim của mọi thành viên bằng một tính cách vô cùng hòa đồng, cởi mở cùng nụ cười rạng rỡ luôn thường trực trên môi. Sự tỏa sáng một cách tự nhiên và đầy ấm áp ấy đã biến bạn thành một mảnh ghép hoàn hảo, là niềm tự hào lớn của lớp học.',
+        quote:        'Chúc các bạn 12A1 bay thật cao trong bầu trời mới, chúc mọi người luôn luôn tự tin và rực rỡ trên con đường mình chọn!',
+        achievements: [],
+        notes:        'Nghĩa vụ cuối cùng của cấp 3: "Hãy sống thật bình yên!" (Phùng Vĩnh Yên)',
+        isTeacher:    false,
+      },
+      {
+        id: 32,
+        name:         'Võ Thị Ngọc Xoàn',
+        role:         'Thành viên',
+        photo:        'img/NgocXoan.jpg',
+        birthday:     '26/05/2008',
+        hometown:     'THPT Tân Lược',
+        bio:          'Sở hữu một phong cách sống phóng khoáng, tự do và vô cùng thẳng tính, Ngọc Xoàn luôn mang lại cảm giác chân thành, tự nhiên cho những người xung quanh. Không chỉ là một "cây hài" đích thực với khả năng tự mình tạo nên những tiếng cười rộn rã cho tập thể, bạn còn là một "nhà ngoại giao vui vẻ" khi sẵn sàng đóng vai trò "cười mồi" đầy nhiệt tình cho những pha tấu hài vô tri của bạn bè. Sự nồng hậu, không khoảng cách cùng nguồn năng lượng sảng khoái ấy đã biến Ngọc Xoàn thành một mảnh ghép đầy cá tính, giữ cho bầu không khí của lớp học luôn ngập tràn sự thoải mái và niềm vui kết nối.',
+        quote:        'Hãy sống cuộc đời có ý nghĩa đừng như Bình, Dũng, Việt và Steve Jobs!',
+        achievements: [],
+        notes:        'Nghĩa vụ cuối cùng của cấp 3: "Hãy sống thật bình yên!" (Phùng Vĩnh Yên)',
+        isTeacher:    false,
+      },
+      {
+        id: 33,
+        name:         'Nguyễn Hoàng Như Ý',
+        role:         'Thành viên',
+        photo:        'img/NhuY.jpg',
+        birthday:     '16/08/2008',
+        hometown:     'THPT Tân Lược',
+        bio:          'Là người khai sinh và định nghĩa phong cách "Cuxi" độc nhất vô nhị của lớp, Như Ý luôn là tâm điểm thu hút bởi gu cá tính riêng biệt và nguồn năng lượng vô cùng tích cực, rạng rỡ. Luôn mang đến sự tươi mới, vui vẻ cho tập thể là thế, nhưng ẩn sâu bên trong bạn lại là một thế giới nội tâm vô cùng sâu sắc, chín chắn và đầy thấu hiểu. Sự giao thoa tuyệt vời giữa vẻ ngoài năng động, tràn đầy sức sống và một tâm hồn tinh tế, giàu cảm xúc đã biến Như Ý thành một mảnh ghép đầy sức hút, mang lại cả niềm vui lẫn sự ấm áp cho cả lớp.',
+        quote:        'Calm-Confident-Smooth',
+        achievements: [],
+        notes:        'Nghĩa vụ cuối cùng của cấp 3: "Hãy sống thật bình yên!" (Phùng Vĩnh Yên)',
+        isTeacher:    false,
+      },
+      {
+        id: 34,
+        name:         'Nguyễn Thị Hải Yến',
+        role:         'Thành viên',
+        photo:        'img/HaiYen.jpg',
+        birthday:     '19/04/2008',
+        hometown:     'THPT Tân Lược',
+        bio:          'Đảm nhận vai trò Bí thư của tập thể, Hải Yến khéo léo dẫn dắt các phong trào bằng một phong cách làm việc vô cùng thoải mái, gần gũi và đầy thấu hiểu. Sở hữu tính cách vui vẻ, hòa đồng, bạn luôn là sợi dây kết nối tự nhiên, biến những hoạt động chung trở nên nhẹ nhàng và tràn ngập tiếng cười. Không chỉ dừng lại ở sự tận tụy trong hiện tại, Hải Yến còn là một cô gái đầy bản lĩnh với những ước mơ rất cao, rất xa cho tương lai phía trước. Chính ngọn lửa hoài bão lớn lao kết hợp cùng nguồn năng lượng tích cực ấy đã biến bạn thành một người thủ lĩnh đoàn hội tuyệt vời, truyền cảm hứng mạnh mẽ cho cả lớp.',
+        quote:        'Hi! I am Steve Jobs VN. Tương lai xán lạn, tiền đồ như gấm, ghi tên lên bảng vàng!',
+        achievements: [],
+        notes:        'Nghĩa vụ cuối cùng của cấp 3: "Hãy sống thật bình yên!" (Phùng Vĩnh Yên)',
+        isTeacher:    false,
+      },
+      // {
+      //   id: 35,
+      //   name:         'Học Sinh 35',
+      //   role:         'Học Sinh',
+      //   photo:        '',
+      //   birthday:     '',
+      //   hometown:     '',
+      //   bio:          '',
+      //   quote:        '',
+      //   achievements: [],
+      //   notes:        '',
+      //   isTeacher:    false,
+      // },
+      // {
+      //   id: 36,
+      //   name:         'Học Sinh 36',
+      //   role:         'Học Sinh',
+      //   photo:        '',
+      //   birthday:     '',
+      //   hometown:     '',
+      //   bio:          '',
+      //   quote:        '',
+      //   achievements: [],
+      //   notes:        '',
+      //   isTeacher:    false,
+      // },
+      // {
+      //   id: 37,
+      //   name:         'Học Sinh 37',
+      //   role:         'Học Sinh',
+      //   photo:        '',
+      //   birthday:     '',
+      //   hometown:     '',
+      //   bio:          '',
+      //   quote:        '',
+      //   achievements: [],
+      //   notes:        '',
+      //   isTeacher:    false,
+      // },
+      // {
+      //   id: 38,
+      //   name:         'Học Sinh 38',
+      //   role:         'Học Sinh',
+      //   photo:        '',
+      //   birthday:     '',
+      //   hometown:     '',
+      //   bio:          '',
+      //   quote:        '',
+      //   achievements: [],
+      //   notes:        '',
+      //   isTeacher:    false,
+      // },
+      // {
+      //   id: 39,
+      //   name:         'Học Sinh 39',
+      //   role:         'Học Sinh',
+      //   photo:        '',
+      //   birthday:     '',
+      //   hometown:     '',
+      //   bio:          '',
+      //   quote:        '',
+      //   achievements: [],
+      //   notes:        '',
+      //   isTeacher:    false,
+      // },
+      // {
+      //   id: 40,
+      //   name:         'Học Sinh 40',
+      //   role:         'Học Sinh',
+      //   photo:        '',
+      //   birthday:     '',
+      //   hometown:     '',
+      //   bio:          '',
+      //   quote:        '',
+      //   achievements: [],
+      //   notes:        '',
+      //   isTeacher:    false,
+      // },
+    ];
+
+    // ── Personal Room data ───────────────────────────────────────────
+    // TODO: This is YOUR private corner — replace the sample entries below
+    // with your own memories. For `photo`, paste an image URL (or leave
+    // '' to show a placeholder). `content` is the text/story you want to
+    // keep. `tags` are small labels shown on the card.
+    const personalData = {
+      title: 'Góc Riêng Của Tấn Hưng',
+      intro: 'Nơi tôi lưu giữ những khoảnh khắc, suy nghĩ và hình ảnh thuộc về riêng mình — một góc nhỏ giữa bảo tàng chung của lớp.',
+      entries: [
+        {
+          id: 1,
+          date: 'Tốt Nghiệp 2026',
+          photo: 'img/LoiNhan_HocSinh_GV_12A1.jpg',
+          title: 'Lời nhắn học sinh lớp 12A1 dành cho thầy Yên',
+          content: 'Gửi đến mặt trời nhỏ!',
+          tags: ['Tạm biệt', 'Đánh dấu khởi đầu mới'],
+        },
+        {
+          id: 2,
+          date: 'Tốt Nghiệp 2026',
+          photo: 'img/LoiNhan_HocSinh_GV_11A1.jpg',
+          title: 'Lời nhắn học sinh lớp 12A1 dành cho thầy Phúc',
+          content: 'Gửi đến bố nui!',
+          tags: ['Học cách cân bằng cán cân'],
+        },
+        {
+          id: 3,
+          date: 'Tốt Nghiệp 2026',
+          photo: 'img/LoiNhan_HocSinh_GV_10A1.jpg',
+          title: 'Lời nhắn học sinh lớp 12A1 dành cho cô Dương',
+          content: 'Gửi đến mẹ thứ hai!',
+          tags: ['Những người từng xa lạ', 'Thông cảm, thấu hiểu'],
+        },
+        {
+          id: 4,
+          date: 'Tốt nghiệp 2026',
+          photo: 'img/10A1.jpg',
+          title: 'Thầy Nguyễn Khắc Hiếu',
+          content: 'Em xin được gửi lời cảm ơn sâu sắc với thầy, được đồng hành cùng thầy em cảm thấy rất vui. Có những đêm ngồi luyện code đến 1h 2h đêm mà không biết mệt, thua thật nhiều cuộc thi rồi cũng có chiến thắng trong nhiều cuộc thi, đến bây giờ em vẫn rất tiết minh không thể thử sức mình với kì thi HSG Tin mức độ quốc gia. Một lần nữa em xin gửi lời tri ân sâu sắc đến thầy, mong rằng sau này có cơ hội chúng ta sẽ lại được đồng hành cùng nhau, chúc thầy và gia đình thật nhiều sức khỏe!',
+          tags: ['Đi là đi bằng thực lực, quan hệ chỉ là yếu tố bên ngoài', 'Tiến bộ hơn mỗi ngày'],
+        },
+        {
+          id: 5,
+          date: 'Tốt nghiệp 2026',
+          photo: 'img/11A1.jpg',
+          title: 'Thầy Nguyễn Thế Bình',
+          content: 'Tính tới hiện tại thầy và con đã đánh trận không biết bao nhiêu lần, thắng được nhiều cuộc thi lớn nhỏ. Thầy luôn quan tâm và kèm sát con, luôn sẵn sàng hỗ trợ con những khung giờ quá trễ. Con chúc thầy và mọi người luôn khỏe mạnh!',
+          tags: ['Đi là đi bằng thực lực, quan hệ chỉ là yếu tố bên ngoài', 'Tiến bộ hơn mỗi ngày'],
+        },
+        {
+          id: 6,
+          date: 'Tốt nghiệp 2026',
+          photo: 'img/12A1.jpg',
+          title: 'Cô Quách Xuân Đào',
+          content: 'Dù con không được kèm cặp trực tiếp với cô nhưng qua cảm nhận của riêng con với những gì con đã trải qua ở trường thật sự cô rất quan tâm học sinh của mình không chỉ riêng con. Đặc biệt cô đã đồng ý cho con phát động một phòng trào có quy mô tương đối lớn mà biết hiệu quả ở hiện tại gần như bằng không. Cũng thật tiết vì con chưa thể hoàn thành những gì con đề xuất nhưng con tin rằng sẽ có người "tham" hơn con, sẽ có lúc trường sẽ lại phát động được một câu lạc bộ thật sự tốt, và chỉn chu. Sau cùng con xin lỗi cô vì những gì con đã làm sai, cảm ơn vì những gì cô đã hỗ trợ để đạt được những thành tích như hôm nay. Chúc cô và gia đình luôn thật nhiều sức khỏe!',
+          tags: ['Đi là đi bằng thực lực, quan hệ chỉ là yếu tố bên ngoài', '"Tham lam" hơn với thứ sẵn có là bước tiến lớn của thành công'],
+        },
+        {
+          id: 7,
+          date: 'Tốt nghiệp 2026',
+          photo: 'img/HoaHongXanh.png',
+          title: 'Gửi toàn thể giáo viên',
+          content: 'Gửi đến toàn thể những thầy cô bộ môn con đã gặp, con chưa gặp một sự tôn trọng và cảm ơn. Cảm ơn vì quý thầy cô đã tin tưởng, sẵn sàng hỗ trợ hết mình. Cũng xin được xin lỗi vì những gì em đã tạo ra trong quá trình học tập tại đây. Trong những lúc nóng nảy có những lần sai lầm mà không nhận ra mong rằng sẽ được quý thầy cô bỏ qua. Có những thầy cô em chưa nhắc đến cũng xin được thông cảm bỏ qua vì dung lượng có hạn nên em không thể gửi hết những lời của mình. Sau cùng em xin chúc toàn thể các thầy cô sẽ có một cuộc sống luôn hạng phúc và khỏe mạnh, xin cảm ơn!',
+          tags: ['Cố gắng đến lúc không thể cố gắng', 'Xin lỗi và cảm ơn'],
+        },
+      ],
+    };
+
+    // ── Teacher data ───────────────────────────────────────────────
+    const teachers = [
+      {
+        id: 't1',
+        name:         'Cô Lê Thị Hướng Dương',
+        role:         'Giáo Viên Chủ Nhiệm 10A1',
+        subject:      'Hóa học',
+        photo:        'img/A1_CoDuong.png',
+        bio:          'Người mẹ đầu tiên dẫn bước cho thế hệ 2008 chập chững bước vào lớp 10 với nhiều bỡ ngỡ và nhiều thứ xa lạ.',
+        quote:        'Học để hiểu, hiểu để biết, biết để thành người!',
+        achievements: ['Chủ Nhiệm Xuất Sắc', 'Chập chững vào mười'],
+        notes:        'Những tiết sinh hoạt giáo viên chủ nhiệm là những ngày rất vui nhộn, các bạn dần quen biết nhau, bắt đầu đùa giỡn với nhau, tạo cho cô những niềm vui, nỗi buồn và món quà sinh nhật thật bất ngờ.',
+        isTeacher:    true,
+      },
+      {
+        id: 't2',
+        name:         'Thầy Nguyễn Thanh Phúc',
+        role:         'Giáo Viên Chủ Nhiệm 11A1',
+        subject:      'Toán Học',
+        photo:        'img/A1_ThayPhuc.png',
+        bio:          'Thầy nổi tiếng với phong cách dạy vô cùng tâm huyết, sử dụng nhiều phương pháp giải hay và luôn kèm thêm cho mọi người để học càng tốt hơn. Ngoài ra, thầy cũng là một người vô cùng tinh tế đã tham gia cùng các bạn học sinh tổ chức chúc mừng 20/11; 8/3 và đặc biệt là cùng làm hội trại với những kỷ niệm khó quên.',
+        quote:        '"Tiên học lễ, hậu học văn" hãy luôn cư xử điềm đạm, nhẹ nhàng, thanh tao.',
+        achievements: ['Chủ nhiệm Xuất Sắc', 'Bố nui cùng đàn con thơ', 'A1 Not Perfect But Only One'],
+        notes:        'Thầy chưa bao giờ xem thường ai, chưa bao giờ bác bỏ ai và luôn đối xử với mọi người một cách rất tử tế.',
+        isTeacher:    true,
+      },
+      {
+        id: 't3',
+        name:         'Thầy Phùng Vĩnh Yên',
+        role:         'Giáo Viên Chủ Nhiệm 12A1',
+        subject:      'Toán Học',
+        photo:        'img/A1_ThayYen.jpg',
+        bio:          'Thầy nổi tiếng với phong cách làm việc nghiêm túc, phong cách dạy học thực chiến, đi từ những gì cơ bản nhất. Ngoài ra, thầy còn rất chăm lo cho lớp từ khâu vệ sinh lớp, ăn uống, đối nhân xử thế và cả sức khỏe của phụ huynh, học sinh.',
+        quote:        'Hãy sống một cuộc sống thật thanh thản, không từ bỏ, luôn cố gắng. Hãy sống một cuộc đời thật an yên!',
+        achievements: ['Chủ nhiệm Xuất Sắc', 'Bố già cùng lũ trẻ', 'Yên Yên là mặt trời nhỏ', 'Our stories will always shine'],
+        notes:        'Thầy chưa bao giờ từ bỏ các học sinh. Thầy tin rằng chúng ta không phải là một người hoàn hảo. Đúng! Vì chúng ta chưa hoàn hảo nên chúng ta phải càng bay xa hơn nữa, bay để thấy mình nhỏ bé, bay để đạt được ước mơ, bay để tìm được cốt cách trong tâm hồn!',
+        isTeacher:    true,
+      },
+    ];
+
+    // ── Member carousel: cycle through all students, 6 at a time ────
+    // (3 on the left wall, 3 on the right wall). Use the arrow buttons
+    // or page dots below the corridor to browse all members.
+    const memberPage = ref(0);
+    const PAGE_SIZE = 6;
+    const totalMemberPages = computed(() => Math.max(1, Math.ceil(students.length / PAGE_SIZE)));
+    const leftWallMembers  = computed(() => {
+      const start = memberPage.value * PAGE_SIZE;
+      return students.slice(start, start + 3);
+    });
+    const rightWallMembers = computed(() => {
+      const start = memberPage.value * PAGE_SIZE + 3;
+      return students.slice(start, start + 3);
+    });
+    function prevMemberPage() {
+      memberPage.value = (memberPage.value - 1 + totalMemberPages.value) % totalMemberPages.value;
+    }
+    function nextMemberPage() {
+      memberPage.value = (memberPage.value + 1) % totalMemberPages.value;
+    }
+
+    // ── Modal helpers ──────────────────────────────────────────────
+    function openModal(member) {
+      selectedMember.value = member;
+      document.body.style.overflow = 'hidden';
+    }
+    function closeModal() {
+      selectedMember.value = null;
+      document.body.style.overflow = '';
+    }
+
+    // ── Class Emblem: rotating gold particle "heart" cloud ───────────
+    // Same point-cloud technique as a heart effect, recolored in the
+    // museum's gold/cream palette and sized to fit the small emblem circle.
+    let emblemRenderer = null, emblemScene = null, emblemCam = null, emblemPts = null, emblemRAF = null;
+
+    function disposeEmblemHeart() {
+      if (emblemRAF) cancelAnimationFrame(emblemRAF);
+      emblemRAF = null;
+      if (emblemPts) {
+        emblemPts.geometry.dispose();
+        emblemPts.material.map && emblemPts.material.map.dispose();
+        emblemPts.material.dispose();
+      }
+      if (emblemRenderer) {
+        emblemRenderer.dispose();
+        // Explicitly free the WebGL context — without this, repeatedly
+        // switching rooms creates new contexts faster than the browser
+        // garbage-collects old ones, eventually hitting the WebGL context
+        // limit and breaking (freezing/blanking) the rotation.
+        if (typeof emblemRenderer.forceContextLoss === 'function') {
+          emblemRenderer.forceContextLoss();
+        }
+      }
+      emblemRenderer = null;
+      emblemScene = null;
+      emblemCam = null;
+      emblemPts = null;
+    }
+
+    function initEmblemHeart() {
+      const canvas = document.getElementById('emblemHeartCvs');
+      if (!canvas || typeof THREE === 'undefined') return;
+
+      const wrap = canvas.parentElement;
+      const W = wrap.offsetWidth, H = wrap.offsetHeight;
+      // If the element isn't laid out yet (e.g. still mid room-transition),
+      // skip — tryInitEmblemHeart() will retry on the next frame.
+      if (!W || !H) return;
+
+      disposeEmblemHeart();
+
+      emblemRenderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+      emblemRenderer.setSize(W, H);
+      emblemRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      emblemRenderer.setClearColor(0x000000, 0);
+
+      // If the GPU context is lost (tab backgrounded, GPU reset, etc.),
+      // rebuild the whole scene once it's restored.
+      canvas.addEventListener('webglcontextlost', (e) => {
+        e.preventDefault();
+        if (emblemRAF) cancelAnimationFrame(emblemRAF);
+        emblemRAF = null;
+      }, { once: true });
+      canvas.addEventListener('webglcontextrestored', () => {
+        if (currentRoom.value === 'hall') tryInitEmblemHeart();
+      }, { once: true });
+
+      emblemScene = new THREE.Scene();
+      emblemCam = new THREE.PerspectiveCamera(50, W / H, 0.1, 100);
+      emblemCam.position.set(0, 0, 4.2);
+
+      // Soft glow sprite texture in gold/cream tones
+      const tc = document.createElement('canvas');
+      tc.width = tc.height = 64;
+      const tx = tc.getContext('2d');
+      const grd = tx.createRadialGradient(32, 32, 0, 32, 32, 32);
+      grd.addColorStop(0,    'rgba(255,255,255,1)');
+      grd.addColorStop(0.25, 'rgba(245,237,214,0.9)');
+      grd.addColorStop(0.6,  'rgba(201,168,76,0.45)');
+      grd.addColorStop(1,    'rgba(0,0,0,0)');
+      tx.fillStyle = grd;
+      tx.fillRect(0, 0, 64, 64);
+      const spriteTex = new THREE.CanvasTexture(tc);
+
+      // Build heart-shaped point cloud (implicit surface)
+      const pos = [], col = [];
+      const TARGET = 3200, SC = 1.08, T_IN = 0.13, T_OUT = 0.025;
+      let tries = 0;
+      while (pos.length / 3 < TARGET && tries < 200000) {
+        tries++;
+        const x = (Math.random() - 0.5) * 3.2;
+        const y = (Math.random() - 0.5) * 3.2;
+        const z = (Math.random() - 0.5) * 3.2;
+        const xs = x / SC, ys = y / SC, zs = z / SC;
+        const q = xs * xs + 2.25 * zs * zs + ys * ys - 1;
+        const f = q * q * q - xs * xs * ys * ys * ys - 0.1125 * zs * zs * ys * ys * ys;
+        if (f >= -T_IN && f <= T_OUT) {
+          pos.push(x, y, z);
+          const hn = Math.max(0, Math.min(1, (ys + 1) / 2));
+          const br = 0.5 + Math.random() * 0.5;
+          // Interpolate from deep gold (low) to pale cream (high)
+          col.push(
+            br * (0.79 + hn * 0.17),
+            br * (0.66 + hn * 0.27),
+            br * (0.30 + hn * 0.54)
+          );
+        }
+      }
+
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+      const mat = new THREE.PointsMaterial({
+        size: 0.135,
+        map: spriteTex,
+        vertexColors: true,
+        blending: THREE.AdditiveBlending,
+        transparent: true,
+        depthWrite: false,
+        sizeAttenuation: true,
+        alphaTest: 0.001,
+      });
+      emblemPts = new THREE.Points(geo, mat);
+      emblemScene.add(emblemPts);
+
+      let t = 0;
+      function animate() {
+        emblemRAF = requestAnimationFrame(animate);
+        t += 0.013;
+        emblemPts.rotation.y = t;
+        emblemPts.rotation.x = Math.sin(t * 0.38) * 0.2;
+        const beat = 1 + Math.sin(t * 2.1) * 0.045 + Math.sin(t * 4.2) * 0.016;
+        emblemPts.scale.setScalar(beat);
+        emblemRenderer.render(emblemScene, emblemCam);
+      }
+      animate();
+    }
+
+    function handleEmblemResize() {
+      if (!emblemRenderer || !emblemCam) return;
+      const canvas = document.getElementById('emblemHeartCvs');
+      if (!canvas) return;
+      const wrap = canvas.parentElement;
+      const W = wrap.offsetWidth, H = wrap.offsetHeight;
+      if (!W || !H) return; // avoid NaN aspect ratio when element is hidden
+      emblemRenderer.setSize(W, H);
+      emblemCam.aspect = W / H;
+      emblemCam.updateProjectionMatrix();
+    }
+
+    // Retry initialization across a few animation frames — needed because
+    // the room-switch <transition mode="out-in"> mounts the new section
+    // only after the previous one finishes leaving, so the canvas may not
+    // exist (or have a size) yet on the very next tick.
+    function tryInitEmblemHeart(retries = 30) {
+      const canvas = document.getElementById('emblemHeartCvs');
+      if (canvas && canvas.parentElement.offsetWidth > 0) {
+        initEmblemHeart();
+      } else if (retries > 0) {
+        requestAnimationFrame(() => tryInitEmblemHeart(retries - 1));
+      }
+    }
+
+    // Re-init the particle effect whenever the Main Hall room becomes
+    // visible (its canvas gets re-created by the v-if/v-else-if switch),
+    // and clean it up when leaving to avoid running renderers in the background.
+    watch(currentRoom, (room) => {
+      if (room === 'hall') {
+        tryInitEmblemHeart();
+      } else {
+        disposeEmblemHeart();
+      }
+    });
+
+    // If the tab is backgrounded and the GPU drops the context, rebuild it
+    // when the tab becomes visible again.
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && currentRoom.value === 'hall' && !emblemRenderer) {
+        tryInitEmblemHeart();
+      }
+    });
+
+
+    function openEntry(entry) {
+      selectedEntry.value = entry;
+      document.body.style.overflow = 'hidden';
+    }
+    function closeEntry() {
+      selectedEntry.value = null;
+      document.body.style.overflow = '';
+    }
+
+    // Close modal on Escape key, and start the emblem particle effect
+    // for the initial Main Hall view.
+    onMounted(() => {
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') { closeModal(); closeEntry(); }
+      });
+      window.addEventListener('resize', handleEmblemResize);
+      tryInitEmblemHeart();
+    });
+
+    return {
+      currentRoom, selectedMember, selectedEntry,
+      rooms, classData, personalData,
+      students, teachers,
+      leftWallMembers, rightWallMembers,
+      memberPage, totalMemberPages, prevMemberPage, nextMemberPage,
+      openModal, closeModal, openEntry, closeEntry,
+    };
+  }
+}).mount('#app');
+</script>
+
+</body>
+</html>
