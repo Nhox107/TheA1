@@ -117,6 +117,29 @@
       animation: shimmer 3s ease-in-out infinite;
     }
 
+    /* ── Background Music Toggle Button ── */
+    .music-toggle-btn {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 46px; height: 46px;
+      border-radius: 50%;
+      background: rgba(26,46,68,0.85);
+      border: 1px solid rgba(201,168,76,0.4);
+      color: #C9A84C;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      z-index: 50;
+      backdrop-filter: blur(4px);
+      transition: background 0.25s, border-color 0.25s, transform 0.25s;
+    }
+    .music-toggle-btn:hover {
+      background: rgba(201,168,76,0.16);
+      border-color: rgba(201,168,76,0.7);
+      transform: scale(1.08);
+    }
+    .music-toggle-btn:active { transform: scale(0.96); }
+
     /* ── Member Carousel Controls ── */
     .corridor-nav-btn {
       width: 42px; height: 42px;
@@ -674,6 +697,25 @@
     </span>
   </header>
 
+  <audio id="bgMusic" loop preload="auto">
+    <source src="img/MotNgayNaoDo.mp3" type="audio/mpeg" />
+  </audio>
+
+  <button
+    @click="toggleMusic"
+    class="music-toggle-btn"
+    :title="isMusicOn ? 'Tắt nhạc' : 'Bật nhạc'"
+    aria-label="Bật/tắt nhạc"
+  >
+    <svg v-if="isMusicOn" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
+    </svg>
+    <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
+      <line x1="2" y1="2" x2="22" y2="22"/>
+    </svg>
+  </button>
+
   <!-- ── Room Container ─────────────────────────────────────────── -->
   <main style="min-height:100vh;padding-bottom:90px;">
     <transition name="room" mode="out-in">
@@ -1164,6 +1206,7 @@ createApp({
     const currentRoom    = ref('hall');
     const selectedMember = ref(null);
     const selectedEntry  = ref(null);
+    const isMusicOn      = ref(false);
 
     // ── Room navigation config ──────────────────────────────────────
     const rooms = [
@@ -1897,6 +1940,29 @@ createApp({
       document.body.style.overflow = '';
     }
 
+    function toggleMusic() {
+      const audio = document.getElementById('bgMusic');
+      if (!audio) return;
+      if (audio.paused) {
+        audio.play().then(() => { isMusicOn.value = true; }).catch(() => {});
+      } else {
+        audio.pause();
+        isMusicOn.value = false;
+      }
+    }
+
+    // Most browsers block audio with sound from autoplaying until the
+    // user interacts with the page. This listens for the very first
+    // click/tap anywhere and starts the music then (only once).
+    function startMusicOnFirstInteraction() {
+      const audio = document.getElementById('bgMusic');
+      if (audio && audio.paused) {
+        audio.play().then(() => { isMusicOn.value = true; }).catch(() => {});
+      }
+      document.removeEventListener('click', startMusicOnFirstInteraction);
+      document.removeEventListener('touchstart', startMusicOnFirstInteraction);
+    }
+
     // ── Class Emblem: rotating gold particle "heart" cloud ───────────
     // Same point-cloud technique as a heart effect, recolored in the
     // museum's gold/cream palette and sized to fit the small emblem circle.
@@ -2087,6 +2153,10 @@ createApp({
       });
       window.addEventListener('resize', handleEmblemResize);
       tryInitEmblemHeart();
+
+      // Start background music on first user interaction (autoplay policy)
+      document.addEventListener('click', startMusicOnFirstInteraction);
+      document.addEventListener('touchstart', startMusicOnFirstInteraction);
     });
 
     return {
@@ -2096,6 +2166,7 @@ createApp({
       leftWallMembers, rightWallMembers,
       memberPage, totalMemberPages, prevMemberPage, nextMemberPage,
       openModal, closeModal, openEntry, closeEntry,
+      isMusicOn, toggleMusic,
     };
   }
 }).mount('#app');
